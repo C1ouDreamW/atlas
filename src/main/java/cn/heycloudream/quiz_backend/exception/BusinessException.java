@@ -1,0 +1,19 @@
+package cn.heycloudream.quiz_backend.exception;
+
+import lombok.Getter;
+
+/**
+ * 可预期的业务异常，由全局处理器转换为 {@link cn.heycloudream.quiz_backend.common.vo.Result}。
+ *
+ * @author atlas
+ */
+@Getter
+public class BusinessException extends RuntimeException {
+
+    private final int code;
+
+    public BusinessException(int code, String message) {
+        super(message);
+        this.code = code;
+    }
+}

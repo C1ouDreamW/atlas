@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: quiz-backend
+  datasource:
+    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:quiz_atlas}?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:root} # 部署后通过环境变量替换
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  
+  # Redis配置
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 3s
+      repositories:
+        enabled: false
+
+# 大模型 API 密钥强烈建议通过环境变量注入
+quiz:
+  async:
+    ai-import:
+    # 线程池配置，适当调整以满足并发需求
+      core-pool-size: 2
+      max-pool-size: 4
+      queue-capacity: 200
+  llm:
+    base-url: https://api.deepseek.com
+    api-key: ${DEEPSEEK_API_KEY:} 
+    model: deepseek-chat
+    chat-path: /v1/chat/completions
+    connect-timeout-ms: 30000
+    read-timeout-ms: 300000
+
+jwt:
+  secret: ${JWT_SECRET:YOUR_SUPER_SECRET_KEY_MUST_BE_LONG_ENOUGH}
+  expiration: 86400000 # 1 天

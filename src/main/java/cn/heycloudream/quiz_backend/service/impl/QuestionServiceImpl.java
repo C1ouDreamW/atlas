@@ -1,0 +1,171 @@
+package cn.heycloudream.quiz_backend.service.impl;
+
+import cn.heycloudream.quiz_backend.common.vo.PageResultVO;
+import cn.heycloudream.quiz_backend.dto.question.QuestionInBankPageQueryDTO;
+import cn.heycloudream.quiz_backend.dto.question.QuestionUpdateDTO;
+import cn.heycloudream.quiz_backend.entity.Question;
+import cn.heycloudream.quiz_backend.entity.QuestionBank;
+import cn.heycloudream.quiz_backend.exception.BusinessException;
+import cn.heycloudream.quiz_backend.mapper.QuestionBankMapper;
+import cn.heycloudream.quiz_backend.mapper.QuestionMapper;
+import cn.heycloudream.quiz_backend.service.QuestionService;
+import cn.heycloudream.quiz_backend.service.cache.QuestionBankDetailCacheEvictor;
+import cn.heycloudream.quiz_backend.vo.question.QuestionVO;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+/**
+ * 试题服务实现。
+ *
+ * @author atlas
+ */
+@Service
+public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> implements QuestionService {
+
+    private static final int SAVE_BATCH_SIZE = 500;
+
+    private final QuestionBankMapper questionBankMapper;
+    private final QuestionBankDetailCacheEvictor questionBankDetailCacheEvictor;
+
+    public QuestionServiceImpl(
+            QuestionMapper questionMapper,
+            QuestionBankMapper questionBankMapper,
+            QuestionBankDetailCacheEvictor questionBankDetailCacheEvictor) {
+        this.baseMapper = questionMapper;
+        this.questionBankMapper = questionBankMapper;
+        this.questionBankDetailCacheEvictor = questionBankDetailCacheEvictor;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void saveImportedQuestions(List<Question> questions) {
+        if (questions == null || questions.isEmpty()) {
+            return;
+        }
+        saveBatch(questions, SAVE_BATCH_SIZE);
+        questions.stream()
+                .map(Question::getQuestionBankId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .forEach(bid -> questionBankDetailCacheEvictor.evict(bid));
+    }
+
+    @Override
+    public PageResultVO<QuestionVO> pageQuestionsInBank(Long currentUserId, Long bankId, QuestionInBankPageQueryDTO query) {
+        requireOwnedBank(currentUserId, bankId);
+        Page<Question> mp = new Page<>(query.getCurrent(), query.getPageSize());
+        LambdaQueryWrapper<Question> w = new LambdaQueryWrapper<Question>()
+                .eq(Question::getQuestionBankId, bankId)
+                .orderByAsc(Question::getSortNo)
+                .orderByDesc(Question::getUpdateTime);
+        if (StringUtils.hasText(query.getKeyword())) {
+            w.like(Question::getStem, query.getKeyword().trim());
+        }
+        baseMapper.selectPage(mp, w);
+        List<QuestionVO> records = mp.getRecords().stream().map(this::toVo).collect(Collectors.toList());
+        return PageResultVO.<QuestionVO>builder().total(mp.getTotal()).records(records).build();
+    }
+
+    @Override
+    public QuestionVO getQuestionById(Long currentUserId, Long questionId) {
+        Question q = baseMapper.selectById(questionId);
+        if (q == null) {
+            throw new BusinessException(404, "试题不存在或无权访问");
+        }
+        requireOwnedBank(currentUserId, q.getQuestionBankId());
+        return toVo(q);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long createQuestionInBank(Long currentUserId, Long bankId, QuestionUpdateDTO body) {
+        requireOwnedBank(currentUserId, bankId);
+        LocalDateTime now = LocalDateTime.now();
+        Question entity = Question.builder()
+                .questionBankId(bankId)
+                .questionType(body.getQuestionType().trim())
+                .stem(body.getStem().trim())
+                .optionsJson(body.getOptionsJson())
+                .answerJson(body.getAnswerJson())
+                .analysis(body.getAnalysis() == null ? null : body.getAnalysis().trim())
+                .rawLlmJson(null)
+                .sortNo(body.getSortNo() == null ? 0 : body.getSortNo())
+                .createTime(now)
+                .updateTime(now)
+                .isDeleted(0)
+                .build();
+        baseMapper.insert(entity);
+        questionBankDetailCacheEvictor.evict(bankId);
+        return entity.getId();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateQuestion(Long currentUserId, Long questionId, QuestionUpdateDTO dto) {
+        Question q = baseMapper.selectById(questionId);
+        if (q == null) {
+            throw new BusinessException(404, "试题不存在或无权访问");
+        }
+        requireOwnedBank(currentUserId, q.getQuestionBankId());
+        q.setQuestionType(dto.getQuestionType().trim());
+        q.setStem(dto.getStem().trim());
+        q.setOptionsJson(dto.getOptionsJson());
+        q.setAnswerJson(dto.getAnswerJson());
+        q.setAnalysis(dto.getAnalysis() == null ? null : dto.getAnalysis().trim());
+        q.setSortNo(dto.getSortNo() == null ? q.getSortNo() : dto.getSortNo());
+        q.setUpdateTime(LocalDateTime.now());
+        baseMapper.updateById(q);
+        questionBankDetailCacheEvictor.evict(q.getQuestionBankId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteQuestion(Long currentUserId, Long questionId) {
+        Question q = baseMapper.selectById(questionId);
+        if (q == null) {
+            throw new BusinessException(404, "试题不存在或无权访问");
+        }
+        Long bankId = q.getQuestionBankId();
+        requireOwnedBank(currentUserId, bankId);
+        baseMapper.deleteById(questionId);
+        questionBankDetailCacheEvictor.evict(bankId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void removeQuestionsByBankId(Long bankId) {
+        remove(new LambdaQueryWrapper<Question>().eq(Question::getQuestionBankId, bankId));
+        questionBankDetailCacheEvictor.evict(bankId);
+    }
+
+    private void requireOwnedBank(Long currentUserId, Long bankId) {
+        QuestionBank bank = questionBankMapper.selectById(bankId);
+        if (bank == null || bank.getUserId() == null || !bank.getUserId().equals(currentUserId)) {
+            throw new BusinessException(404, "题库不存在或无权访问");
+        }
+    }
+
+    private QuestionVO toVo(Question e) {
+        return QuestionVO.builder()
+                .id(e.getId())
+                .questionBankId(e.getQuestionBankId())
+                .questionType(e.getQuestionType())
+                .stem(e.getStem())
+                .optionsJson(e.getOptionsJson())
+                .answerJson(e.getAnswerJson())
+                .analysis(e.getAnalysis())
+                .sortNo(e.getSortNo())
+                .createTime(e.getCreateTime())
+                .updateTime(e.getUpdateTime())
+                .build();
+    }
+}
