@@ -54,3 +54,5 @@ docs/
 ### cursor ###
 *.cursor
 .cursorrules
+.deepseek/
+/AGENTS.md
