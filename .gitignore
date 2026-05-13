@@ -56,3 +56,10 @@ docs/
 .cursorrules
 .deepseek/
 /AGENTS.md
+
+### JMeter ###
+*.jmx
+*.jtl
+jmeter.log
+report-cold-start
+report-cache-hit
