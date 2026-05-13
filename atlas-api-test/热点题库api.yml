@@ -1,0 +1,15 @@
+info:
+  name: 热点题库api
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: http://localhost:8080/api/v1/question-banks/1/hot-practice-detail
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

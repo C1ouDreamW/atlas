@@ -1,0 +1,22 @@
+info:
+  name: 分页查询题库（当前用户）
+  type: http
+  seq: 4
+
+http:
+  method: GET
+  url: http://localhost:8080/api/v1/question-banks?current=1&pageSize=10
+  params:
+    - name: current
+      value: "1"
+      type: query
+    - name: pageSize
+      value: "10"
+      type: query
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
