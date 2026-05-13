@@ -1,0 +1,35 @@
+package cn.heycloudream.quiz_backend.config;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+/**
+ * Spring MVC 配置：注册 JWT 鉴权拦截器及其白名单路径。
+ *
+ * @author atlas
+ */
+@Configuration
+@RequiredArgsConstructor
+public class WebMvcConfig implements WebMvcConfigurer {
+
+    private final JwtAuthInterceptor jwtAuthInterceptor;
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(jwtAuthInterceptor)
+                .addPathPatterns("/api/**")
+                .excludePathPatterns(
+                        // 用户注册与登录
+                        "/api/v1/users/register",
+                        "/api/v1/users/login",
+                        // 公开热点题库详情（无需登录）
+                        "/api/v1/question-banks/*/hot-practice-detail",
+                        // Swagger / OpenAPI 文档
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/v3/api-docs/**"
+                );
+    }
+}

@@ -1,5 +1,6 @@
 package cn.heycloudream.quiz_backend.controller;
 
+import cn.heycloudream.quiz_backend.util.UserContextHolder;
 import cn.heycloudream.quiz_backend.common.vo.Result;
 import cn.heycloudream.quiz_backend.dto.question.QuestionUpdateDTO;
 import cn.heycloudream.quiz_backend.service.QuestionService;
@@ -34,7 +35,7 @@ public class QuestionController {
     @GetMapping("/{id}")
     @Operation(summary = "根据试题 ID 获取详情", description = "仅所属题库所有者可以查看。")
     public Result<QuestionVO> getById(@PathVariable("id") Long id) {
-        Long userId = 1L; // TODO: 从 JWT / Security 上下文中获取当前登录用户 ID
+        Long userId = UserContextHolder.get();
         return Result.success(questionService.getQuestionById(userId, id));
     }
 
@@ -43,7 +44,7 @@ public class QuestionController {
     public Result<Void> update(
             @PathVariable("id") Long id,
             @Valid @RequestBody QuestionUpdateDTO dto) {
-        Long userId = 1L; // TODO: 从 JWT / Security 上下文中获取当前登录用户 ID
+        Long userId = UserContextHolder.get();
         questionService.updateQuestion(userId, id, dto);
         return Result.success(null);
     }
@@ -51,7 +52,7 @@ public class QuestionController {
     @DeleteMapping("/{id}")
     @Operation(summary = "删除试题", description = "逻辑删除；仅所属题库所有者可删除。")
     public Result<Void> delete(@PathVariable("id") Long id) {
-        Long userId = 1L; // TODO: 从 JWT / Security 上下文中获取当前登录用户 ID
+        Long userId = UserContextHolder.get();
         questionService.deleteQuestion(userId, id);
         return Result.success(null);
     }

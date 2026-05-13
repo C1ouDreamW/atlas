@@ -106,10 +106,13 @@ mvn test
 
 | 功能模块 | HTTP | 路由路径 | 接口描述 | 预期参数预估 |
 | --- | --- | --- | --- | --- |
+| **用户鉴权** | `POST` | `/api/v1/users/register` | 用户注册 | `UserRegisterDTO` |
+| **用户鉴权** | `POST` | `/api/v1/users/login` | 用户登录，返回 JWT Token | `UserLoginDTO` |
 | **题库管理** | `POST` | `/api/v1/question-banks` | 创建题库 | `QuestionBankCreateDTO` |
 | **题库管理** | `PUT` | `/api/v1/question-banks/{id}`| 更新题库 | `QuestionBankUpdateDTO` |
-| **智能导题** | `POST` | `/api/v1/ai/import/text` | 异步 AI 文本导题 | `AiQuestionImportTextDTO` |
-| **试题管理** | `POST` | `/api/v1/questions` | 手动新增试题 | `QuestionCreateDTO` |
+| **题库管理** | `GET` | `/api/v1/question-banks/{id}/hot-practice-detail` | 获取公开热点题库刷题数据 | — |
+| **智能导题** | `POST` | `/api/v1/question-banks/{id}/ai-import/text` | 异步 AI 文本导题 | `AiQuestionImportTextDTO` |
+| **试题管理** | `GET` | `/api/v1/questions/{id}` | 获取试题详情 | — |
 | **试题管理** | `PUT` | `/api/v1/questions/{id}` | 更新试题内容 | `QuestionUpdateDTO` |
 
 > 所有接口统一返回标准化 `Result<T>` 格式，包含标识码 `code`、提示消息 `message` 以及业务承载体 `data`。
@@ -124,18 +127,22 @@ mvn test
 │   │   ├── java/cn/.../quiz_backend/
 │   │   │   ├── client/      # 第三方 API 发起层 (LLM等)
 │   │   │   ├── common/      # 公共常量定义、通用分页DTO和统一ResultVO封装
-│   │   │   ├── config/      # Bean 全局配置 (跨域, 异步线程池, AI参数组)
+│   │   │   ├── config/      # Bean 全局配置 (JWT鉴权, 异步线程池, AI参数组, 安全密码编码)
 │   │   │   ├── controller/  # 控制器层 (HTTP 路由)
+│   │   │   │   └── UserController.java       # 用户注册与登录
 │   │   │   ├── dto/         # Data Transfer Object，负责接受前端请求
+│   │   │   │   └── user/                     # 用户模块 DTO
 │   │   │   ├── entity/      # MyBatis-Plus 与 MySQL 表对应的数据库实体映射模型
 │   │   │   ├── enums/       # 业务类型枚举层
 │   │   │   ├── exception/   # 自定义异常处理机制及全局拦截器
 │   │   │   ├── mapper/      # 数据访问层接口 (MyBatis/SQL)
 │   │   │   ├── service/     # 业务逻辑接口定义与层设计
+│   │   │   │   ├── UserService.java          # 用户鉴权服务接口
 │   │   │   │   ├── ai/      # AI 响应逻辑、异步处理实现
 │   │   │   │   └── impl/    # 核心服务逻辑默认实现类
-│   │   │   ├── util/        # 静态工具类 (如 JSON 解析净化工具工具)
+│   │   │   ├── util/        # 静态工具类 (JWT签发与验签, 线程上下文, JSON解析净化)
 │   │   │   └── vo/          # 展现给前台的数据承载对象
+│   │   │       └── user/                     # 用户模块 VO
 │   │   └── resources/
 │   │       ├── application.yaml     # Spring Boot 环境配置文件
 │   │       └── prompts/             # 向 LLM 投喂的基础 System Prompt 配置库

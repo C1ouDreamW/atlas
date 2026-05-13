@@ -1,5 +1,6 @@
 package cn.heycloudream.quiz_backend.controller;
 
+import cn.heycloudream.quiz_backend.util.UserContextHolder;
 import cn.heycloudream.quiz_backend.common.dto.PageRequestDTO;
 import cn.heycloudream.quiz_backend.common.vo.PageResultVO;
 import cn.heycloudream.quiz_backend.common.vo.Result;
@@ -51,14 +52,14 @@ public class QuestionBankController {
     @GetMapping
     @Operation(summary = "分页查询当前用户的题库列表", description = "按更新时间倒序；当前用户 ID 由服务端安全上下文解析（占位）。")
     public Result<PageResultVO<QuestionBankVO>> pageMyBanks(@Valid @ModelAttribute PageRequestDTO page) {
-        Long userId = 1L; // TODO: 从 JWT / Security 上下文中获取当前登录用户 ID
+        Long userId = UserContextHolder.get();
         return Result.success(questionBankService.pageMyBanks(userId, page));
     }
 
     @PostMapping
     @Operation(summary = "创建题库", description = "写入创建者用户 ID（由服务端安全上下文解析，占位）。")
     public Result<Long> createBank(@Valid @RequestBody QuestionBankCreateDTO dto) {
-        Long userId = 1L; // TODO: 从 JWT / Security 上下文中获取当前登录用户 ID
+        Long userId = UserContextHolder.get();
         Long id = questionBankService.createBank(userId, dto);
         return Result.success(id);
     }
@@ -78,7 +79,7 @@ public class QuestionBankController {
     public Result<Void> submitAiImportFromText(
             @PathVariable("bankId") Long bankId,
             @Valid @RequestBody AiQuestionImportTextDTO body) {
-        Long userId = 1L; // TODO: 从 JWT / Security 上下文中获取当前登录用户 ID
+        Long userId = UserContextHolder.get();
         aiQuestionImportService.scheduleImportFromText(userId, bankId, body.getPlainText());
         return Result.success(null);
     }
@@ -88,7 +89,7 @@ public class QuestionBankController {
             summary = "查询智能导入异步状态",
             description = "读取 Redis 中的最近一次导入状态（PROCESSING/SUCCESS/FAILED）；无记录或已过期时 data 为 null。")
     public Result<AiImportStatusVO> getAiImportStatus(@PathVariable("bankId") Long bankId) {
-        Long userId = 1L; // TODO: 从 JWT / Security 上下文中获取当前登录用户 ID
+        Long userId = UserContextHolder.get();
         return Result.success(aiQuestionImportService.getImportStatus(userId, bankId));
     }
 
@@ -97,7 +98,7 @@ public class QuestionBankController {
     public Result<PageResultVO<QuestionVO>> pageQuestionsInBank(
             @PathVariable("bankId") Long bankId,
             @Valid @ModelAttribute QuestionInBankPageQueryDTO query) {
-        Long userId = 1L; // TODO: 从 JWT / Security 上下文中获取当前登录用户 ID
+        Long userId = UserContextHolder.get();
         return Result.success(questionService.pageQuestionsInBank(userId, bankId, query));
     }
 
@@ -108,7 +109,7 @@ public class QuestionBankController {
     public Result<Long> createQuestionInBank(
             @PathVariable("bankId") Long bankId,
             @Valid @RequestBody QuestionUpdateDTO body) {
-        Long userId = 1L; // TODO: 从 JWT / Security 上下文中获取当前登录用户 ID
+        Long userId = UserContextHolder.get();
         Long id = questionService.createQuestionInBank(userId, bankId, body);
         return Result.success(id);
     }
@@ -118,7 +119,7 @@ public class QuestionBankController {
     public Result<Void> updateBank(
             @PathVariable("bankId") Long bankId,
             @Valid @RequestBody QuestionBankUpdateDTO dto) {
-        Long userId = 1L; // TODO: 从 JWT / Security 上下文中获取当前登录用户 ID
+        Long userId = UserContextHolder.get();
         questionBankService.updateBank(userId, bankId, dto);
         return Result.success(null);
     }
@@ -126,7 +127,7 @@ public class QuestionBankController {
     @DeleteMapping("/{bankId}")
     @Operation(summary = "删除题库", description = "逻辑删除题库，并级联逻辑删除其下全部试题。")
     public Result<Void> deleteBank(@PathVariable("bankId") Long bankId) {
-        Long userId = 1L; // TODO: 从 JWT / Security 上下文中获取当前登录用户 ID
+        Long userId = UserContextHolder.get();
         questionBankService.deleteBank(userId, bankId);
         return Result.success(null);
     }
