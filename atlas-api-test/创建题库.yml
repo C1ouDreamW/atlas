@@ -1,0 +1,15 @@
+info:
+  name: 创建题库
+  type: http
+  seq: 7
+
+http:
+  method: POST
+  url: http://localhost:8080/api/v1/question-banks
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
