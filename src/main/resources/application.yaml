@@ -36,3 +36,12 @@ quiz:
 jwt:
   secret: ${JWT_SECRET:YOUR_SUPER_SECRET_KEY_MUST_BE_LONG_ENOUGH}
   expiration: 86400000 # 1 天
+
+# ==================== SpringDoc OpenAPI 配置 ====================
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true

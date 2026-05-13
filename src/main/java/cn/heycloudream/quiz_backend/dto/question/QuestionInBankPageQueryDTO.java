@@ -8,7 +8,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import lombok.experimental.SuperBuilder;
 
 /**
  * 指定题库下试题分页查询（题库 ID 由路径变量提供，故本 DTO 不包含 questionBankId）。
@@ -16,7 +15,6 @@ import lombok.experimental.SuperBuilder;
  * @author atlas
  */
 @Data
-@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)

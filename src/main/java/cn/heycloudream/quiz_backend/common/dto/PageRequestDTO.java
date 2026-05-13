@@ -8,7 +8,6 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.experimental.SuperBuilder;
 
 /**
  * 全局通用分页请求参数（页码 + 每页条数）。
@@ -16,7 +15,6 @@ import lombok.experimental.SuperBuilder;
  * @author atlas
  */
 @Data
-@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
 @Schema(description = "通用分页请求参数")
