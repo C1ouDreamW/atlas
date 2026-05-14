@@ -16,7 +16,7 @@ import java.util.Optional;
 /**
  * 将智能导入异步状态写入 Redis，供前端经 HTTP 轮询查询。
  *
- * @author atlas
+ * @author C1ouD
  */
 @SuppressWarnings("null")
 @Slf4j

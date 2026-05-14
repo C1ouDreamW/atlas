@@ -19,7 +19,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
  * 在 {@link #afterCompletion} 中清除上下文，防止线程池内存泄漏。
  * </p>
  *
- * @author atlas
+ * @author C1ouD
  */
 @Slf4j
 @Component

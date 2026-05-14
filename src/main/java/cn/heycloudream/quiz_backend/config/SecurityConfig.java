@@ -7,7 +7,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 /**
  * 安全相关 Bean 注册（仅引入 BCrypt，不激活 Spring Security 自动配置链）。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Configuration
 public class SecurityConfig {

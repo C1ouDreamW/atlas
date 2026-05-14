@@ -63,3 +63,6 @@ docs/
 jmeter.log
 report-cold-start
 report-cache-hit
+
+### 测试题目文件 ###
+assets/

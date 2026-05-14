@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 /**
  * 启用大模型相关配置属性绑定。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Configuration
 @EnableConfigurationProperties(QuizLlmProperties.class)

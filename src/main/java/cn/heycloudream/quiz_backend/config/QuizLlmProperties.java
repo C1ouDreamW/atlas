@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * 大模型 HTTP 调用相关配置（OpenAI 兼容 Chat Completions）。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Data
 @ConfigurationProperties(prefix = "quiz.llm")

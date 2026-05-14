@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 /**
  * 热点题库详情缓存失效（题库或试题发生写操作时调用）。
  *
- * @author atlas
+ * @author C1ouD
  */
 @SuppressWarnings("null")
 @Component

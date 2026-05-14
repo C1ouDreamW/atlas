@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
  * 防止线程池复用导致的内存泄漏与数据串扰。
  * </p>
  *
- * @author atlas
+ * @author C1ouD
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class UserContextHolder {

@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 路径在白名单中，不经过 JWT 拦截器。
  * </p>
  *
- * @author atlas
+ * @author C1ouD
  */
 @RestController
 @RequestMapping("/api/v1/users")

@@ -1,6 +1,10 @@
 spring:
   application:
     name: quiz-backend
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
   datasource:
     url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:quiz_atlas}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: ${DB_USER:root}
@@ -19,6 +23,10 @@ spring:
 
 # 大模型 API 密钥建议通过环境变量注入
 quiz:
+  ai-import:
+    rate-limit:
+      max-requests-per-hour: 5
+    task-timeout-ms: 600000  # 10 分钟
   async:
     ai-import:
     # 线程池配置，适当调整以满足并发需求
@@ -28,14 +36,14 @@ quiz:
   llm:
     base-url: https://api.deepseek.com
     api-key: ${DEEPSEEK_API_KEY:} 
-    model: deepseek-chat
+    model: deepseek-v4-flash
     chat-path: /v1/chat/completions
     connect-timeout-ms: 30000
     read-timeout-ms: 300000
 
 jwt:
   secret: ${JWT_SECRET:YOUR_SUPER_SECRET_KEY_MUST_BE_LONG_ENOUGH}
-  expiration: 86400000 # 1 天
+  expiration: 864000000 # 10天，单位为毫秒
 
 # ==================== SpringDoc OpenAPI 配置 ====================
 springdoc:

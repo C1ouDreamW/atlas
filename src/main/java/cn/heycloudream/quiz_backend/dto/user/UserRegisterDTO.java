@@ -8,7 +8,7 @@ import lombok.Data;
 /**
  * 用户注册请求 DTO。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Data
 @Schema(description = "用户注册请求")

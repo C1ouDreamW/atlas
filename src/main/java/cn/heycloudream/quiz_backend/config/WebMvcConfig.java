@@ -8,7 +8,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 /**
  * Spring MVC 配置：注册 JWT 鉴权拦截器及其白名单路径。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Configuration
 @RequiredArgsConstructor

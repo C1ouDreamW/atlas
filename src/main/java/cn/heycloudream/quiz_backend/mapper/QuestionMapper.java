@@ -7,7 +7,7 @@ import org.apache.ibatis.annotations.Mapper;
 /**
  * 试题表 Mapper。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Mapper
 public interface QuestionMapper extends BaseMapper<Question> {

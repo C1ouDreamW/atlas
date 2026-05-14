@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 /**
  * 全局通用分页请求参数（页码 + 每页条数）。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Data
 @NoArgsConstructor

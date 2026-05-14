@@ -11,7 +11,7 @@ import java.util.List;
 /**
  * 大模型返回的 JSON 数组元素结构，用于 Jackson 反序列化。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Data
 @Builder

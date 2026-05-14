@@ -10,7 +10,7 @@ import java.nio.charset.StandardCharsets;
 /**
  * 从 classpath 加载智能导入系统提示词，避免在 Java 源码中维护超长字符串。
  *
- * @author atlas
+ * @author C1ouD
  */
 @SuppressWarnings("null")
 @Component

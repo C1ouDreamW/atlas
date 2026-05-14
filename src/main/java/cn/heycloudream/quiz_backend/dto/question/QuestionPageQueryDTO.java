@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 /**
  * 某题库下试题分页查询条件，继承通用分页参数。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Data
 @NoArgsConstructor

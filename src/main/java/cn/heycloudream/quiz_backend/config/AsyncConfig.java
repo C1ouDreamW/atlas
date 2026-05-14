@@ -12,7 +12,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 /**
  * 异步任务与线程池配置（智能导入等耗时任务）。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Configuration
 @EnableAsync

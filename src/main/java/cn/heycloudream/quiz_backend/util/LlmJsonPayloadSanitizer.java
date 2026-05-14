@@ -6,7 +6,7 @@ import lombok.NoArgsConstructor;
 /**
  * 对大模型输出做保守清洗，去除常见 Markdown 代码围栏后再交给 JSON 解析器。
  *
- * @author atlas
+ * @author C1ouD
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class LlmJsonPayloadSanitizer {

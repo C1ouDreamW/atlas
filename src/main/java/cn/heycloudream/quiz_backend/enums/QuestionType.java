@@ -5,7 +5,7 @@ import java.util.Arrays;
 /**
  * 试题题型枚举，与大模型约定及数据库 {@code question_type} 一致。
  *
- * @author atlas
+ * @author C1ouD
  */
 public enum QuestionType {
 

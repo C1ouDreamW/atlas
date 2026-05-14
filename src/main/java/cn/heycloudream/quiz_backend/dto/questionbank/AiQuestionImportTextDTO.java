@@ -7,7 +7,7 @@ import lombok.Data;
 /**
  * 智能导入请求体：从文档抽取后的纯文本。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Data
 @Schema(description = "智能导入纯文本")

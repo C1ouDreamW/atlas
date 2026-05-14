@@ -5,7 +5,7 @@ import lombok.Getter;
 /**
  * 可预期的业务异常，由全局处理器转换为 {@link cn.heycloudream.quiz_backend.common.vo.Result}。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Getter
 public class BusinessException extends RuntimeException {

@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 /**
  * 题库表实体，对应数据库表 {@code question_bank}。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Data
 @Builder

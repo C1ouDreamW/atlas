@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 /**
  * JWT 配置属性，绑定 application.yaml 中 {@code jwt.*} 键。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Data
 @Component
