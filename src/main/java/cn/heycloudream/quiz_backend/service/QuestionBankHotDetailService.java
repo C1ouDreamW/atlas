@@ -5,7 +5,7 @@ import cn.heycloudream.quiz_backend.vo.questionbank.QuestionBankDetailBundleVO;
 /**
  * 期末周热点公开题库详情（含全量试题）查询，整合 Redis 与 MySQL。
  *
- * @author atlas
+ * @author C1ouD
  */
 public interface QuestionBankHotDetailService {
 

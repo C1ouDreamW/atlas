@@ -10,15 +10,19 @@ import cn.heycloudream.quiz_backend.mapper.QuestionBankMapper;
 import cn.heycloudream.quiz_backend.mapper.QuestionMapper;
 import cn.heycloudream.quiz_backend.service.QuestionService;
 import cn.heycloudream.quiz_backend.service.cache.QuestionBankDetailCacheEvictor;
+import cn.heycloudream.quiz_backend.vo.ai.QuestionPreviewVO;
 import cn.heycloudream.quiz_backend.vo.question.QuestionVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -26,7 +30,7 @@ import java.util.stream.Collectors;
 /**
  * 试题服务实现。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Service
 public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> implements QuestionService {
@@ -35,14 +39,17 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
     private final QuestionBankMapper questionBankMapper;
     private final QuestionBankDetailCacheEvictor questionBankDetailCacheEvictor;
+    private final ObjectMapper objectMapper;
 
     public QuestionServiceImpl(
             QuestionMapper questionMapper,
             QuestionBankMapper questionBankMapper,
-            QuestionBankDetailCacheEvictor questionBankDetailCacheEvictor) {
+            QuestionBankDetailCacheEvictor questionBankDetailCacheEvictor,
+            ObjectMapper objectMapper) {
         this.baseMapper = questionMapper;
         this.questionBankMapper = questionBankMapper;
         this.questionBankDetailCacheEvictor = questionBankDetailCacheEvictor;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -57,6 +64,42 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                 .filter(Objects::nonNull)
                 .distinct()
                 .forEach(bid -> questionBankDetailCacheEvictor.evict(bid));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void batchImportPreview(Long bankId, List<QuestionPreviewVO> previews) {
+        if (previews == null || previews.isEmpty()) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        List<Question> entities = new ArrayList<>(previews.size());
+        int sortNo = 1;
+        for (QuestionPreviewVO p : previews) {
+            String optionsJson;
+            String answerJson;
+            try {
+                optionsJson = objectMapper.writeValueAsString(p.getOptions());
+                answerJson = objectMapper.writeValueAsString(p.getAnswer());
+            } catch (JsonProcessingException e) {
+                throw new BusinessException(500, "序列化选项/答案 JSON 失败: " + e.getMessage());
+            }
+            Question q = Question.builder()
+                    .questionBankId(bankId)
+                    .questionType(p.getQuestionType().trim())
+                    .stem(p.getStem().trim())
+                    .optionsJson(optionsJson)
+                    .answerJson(answerJson)
+                    .analysis(p.getAnalysis() == null ? "" : p.getAnalysis())
+                    .rawLlmJson(null)
+                    .sortNo(sortNo++)
+                    .createTime(now)
+                    .updateTime(now)
+                    .isDeleted(0)
+                    .build();
+            entities.add(q);
+        }
+        saveImportedQuestions(entities);
     }
 
     @Override

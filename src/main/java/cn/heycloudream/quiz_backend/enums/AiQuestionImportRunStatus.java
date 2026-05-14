@@ -3,7 +3,7 @@ package cn.heycloudream.quiz_backend.enums;
 /**
  * 智能导入异步任务在 Redis 中的状态枚举。
  *
- * @author atlas
+ * @author C1ouD
  */
 public enum AiQuestionImportRunStatus {
 

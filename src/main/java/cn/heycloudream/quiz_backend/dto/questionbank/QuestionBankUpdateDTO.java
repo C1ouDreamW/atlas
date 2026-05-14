@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 /**
  * 全量更新题库请求体（PUT），字段校验与 {@link QuestionBankCreateDTO} 一致，主键 id 由路径传递。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Data
 @Builder

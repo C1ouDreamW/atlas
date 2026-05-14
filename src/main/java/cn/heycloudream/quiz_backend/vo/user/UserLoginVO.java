@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 /**
  * 用户登录响应 VO。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Data
 @Builder

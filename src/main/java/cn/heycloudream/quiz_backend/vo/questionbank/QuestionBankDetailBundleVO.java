@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * 公开热点题库刷题用聚合视图：题库信息 + 全量试题列表（与 Redis 缓存 JSON 结构一致）。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Data
 @Builder

@@ -20,7 +20,7 @@ import java.util.Map;
 /**
  * OpenAI 兼容 Chat Completions 调用客户端，带连接/读超时。
  *
- * @author atlas
+ * @author C1ouD
  */
 @SuppressWarnings("null")
 @Slf4j

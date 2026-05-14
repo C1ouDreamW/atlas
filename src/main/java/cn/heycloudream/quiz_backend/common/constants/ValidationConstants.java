@@ -6,7 +6,7 @@ import lombok.NoArgsConstructor;
 /**
  * 全局校验用长度与范围常量，避免魔法数字散落在 DTO 中。
  *
- * @author atlas
+ * @author C1ouD
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ValidationConstants {
@@ -37,4 +37,7 @@ public final class ValidationConstants {
 
     /** 分页：每页最大条数上限。 */
     public static final int PAGE_SIZE_MAX = 100;
+
+    /** 文件导入上限（字节）：10 MB，超限拒绝。 */
+    public static final long FILE_IMPORT_MAX_SIZE_BYTES = 10L * 1024 * 1024;
 }

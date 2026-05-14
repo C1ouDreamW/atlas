@@ -6,7 +6,7 @@ import lombok.NoArgsConstructor;
 /**
  * 刷题热点场景 Redis Key 与占位符约定。
  *
- * @author atlas
+ * @author C1ouD
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class QuizRedisCacheConstants {
@@ -57,5 +57,59 @@ public final class QuizRedisCacheConstants {
      */
     public static String importStatusKey(long bankId) {
         return AI_IMPORT_STATUS_PREFIX + bankId;
+    }
+
+    // ==================== 任务系统 Key（Phase A 新增） ====================
+
+    /** Redis Stream 任务下发流。 */
+    public static final String TASK_STREAM_KEY = "quiz:task:stream";
+
+    /** Stream 消费组名称。 */
+    public static final String TASK_STREAM_GROUP = "quiz-ai-workers";
+
+    /** Stream 最大长度（条）。 */
+    public static final long TASK_STREAM_MAX_LEN = 1000;
+
+    /** 任务状态 Key 前缀：{@code quiz:task:status:{taskId}}。 */
+    private static final String TASK_STATUS_PREFIX = "quiz:task:status:";
+
+    /** 任务结果 Key 前缀：{@code quiz:task:result:{taskId}}。 */
+    private static final String TASK_RESULT_PREFIX = "quiz:task:result:";
+
+    /** 任务元数据 Key 前缀：{@code quiz:task:meta:{taskId}}。 */
+    private static final String TASK_META_PREFIX = "quiz:task:meta:";
+
+    /** 任务幂等落库锁 Key 前缀：{@code quiz:task:import_lock:{taskId}}。 */
+    private static final String TASK_IMPORT_LOCK_PREFIX = "quiz:task:import_lock:";
+
+    /** 任务状态 TTL（秒）：1 小时。 */
+    public static final int TASK_STATUS_TTL_SECONDS = 3600;
+
+    /** 任务结果 TTL（秒）：30 分钟，预览确认后尽快落库。 */
+    public static final int TASK_RESULT_TTL_SECONDS = 1800;
+
+    /** 任务元数据 TTL（秒）：1 小时。 */
+    public static final int TASK_META_TTL_SECONDS = 3600;
+
+    /** 幂等落库锁 TTL（秒）：5 分钟。 */
+    public static final int TASK_IMPORT_LOCK_TTL_SECONDS = 300;
+
+    /** 任务扫描锁 Key，供 Watchdog 使用。 */
+    public static final String TASK_WATCHDOG_LOCK_KEY = "quiz:task:watchdog:lock";
+
+    public static String taskStatusKey(String taskId) {
+        return TASK_STATUS_PREFIX + taskId;
+    }
+
+    public static String taskResultKey(String taskId) {
+        return TASK_RESULT_PREFIX + taskId;
+    }
+
+    public static String taskMetaKey(String taskId) {
+        return TASK_META_PREFIX + taskId;
+    }
+
+    public static String taskImportLockKey(String taskId) {
+        return TASK_IMPORT_LOCK_PREFIX + taskId;
     }
 }

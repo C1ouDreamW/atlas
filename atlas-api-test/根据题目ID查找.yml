@@ -8,7 +8,7 @@ http:
   url: http://localhost:8080/api/v1/questions/1?id=1
   headers:
     - name: Authorization
-      value: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIyIiwiaWF0IjoxNzc4Njg3NDQ2LCJleHAiOjE3Nzg3NzM4NDZ9.5CzmbMy1VA5MtQCz8aJSofiHf8kT0yrrgfTEGryU6e-wB6_jFCQQAJPr36IaA67HapKwigI7eIMtuLsceWivtA
+      value: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIyIiwiaWF0IjoxNzc4NzY1Nzc4LCJleHAiOjE3Nzk2Mjk3Nzh9.cGuQHNAlNjw2C3XLLzXSESPpSqhzk3oExfJGstEooG_FJTeITdDe0KcwJ0mA4syQv5IK-4ewBZ6ShV3Fu0NkKA
   params:
     - name: id
       value: "1"

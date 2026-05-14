@@ -4,6 +4,7 @@ import cn.heycloudream.quiz_backend.common.vo.PageResultVO;
 import cn.heycloudream.quiz_backend.dto.question.QuestionInBankPageQueryDTO;
 import cn.heycloudream.quiz_backend.dto.question.QuestionUpdateDTO;
 import cn.heycloudream.quiz_backend.entity.Question;
+import cn.heycloudream.quiz_backend.vo.ai.QuestionPreviewVO;
 import cn.heycloudream.quiz_backend.vo.question.QuestionVO;
 import com.baomidou.mybatisplus.extension.service.IService;
 
@@ -12,7 +13,7 @@ import java.util.List;
 /**
  * 试题领域服务，封装批量写入等能力。
  *
- * @author atlas
+ * @author C1ouD
  */
 public interface QuestionService extends IService<Question> {
 
@@ -22,6 +23,17 @@ public interface QuestionService extends IService<Question> {
      * @param questions 已通过校验的实体列表（可为空，空则直接返回）
      */
     void saveImportedQuestions(List<Question> questions);
+
+    /**
+     * 将预览确认后的题目列表批量落库（新任务体系）。
+     * <p>
+     * 将 {@link QuestionPreviewVO} 转换为 {@link Question} 实体后委托 {@link #saveImportedQuestions}。
+     * </p>
+     *
+     * @param bankId   目标题库 ID
+     * @param previews 前端确认后的预览题目列表
+     */
+    void batchImportPreview(Long bankId, List<QuestionPreviewVO> previews);
 
     /**
      * 分页查询指定题库下的试题（需校验题库归属当前用户）。

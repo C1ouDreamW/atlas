@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 /**
  * 热点题库详情：StringRedisTemplate 存 JSON、随机 TTL 防雪崩、SET NX EX 防击穿、NULL_BANK 防穿透。
  *
- * @author atlas
+ * @author C1ouD
  */
 @SuppressWarnings("null")
 @Slf4j

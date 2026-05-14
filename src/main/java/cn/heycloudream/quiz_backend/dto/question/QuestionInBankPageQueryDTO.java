@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 /**
  * 指定题库下试题分页查询（题库 ID 由路径变量提供，故本 DTO 不包含 questionBankId）。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Data
 @NoArgsConstructor

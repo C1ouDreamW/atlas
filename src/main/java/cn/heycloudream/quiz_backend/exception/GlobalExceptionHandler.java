@@ -9,11 +9,12 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 /**
  * 全局异常处理，将业务与参数校验错误统一为 {@link Result}。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Slf4j
 @RestControllerAdvice
@@ -21,6 +22,20 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public Result<Void> handleBusiness(BusinessException e) {
+        return Result.fail(e.getCode(), e.getMessage());
+    }
+
+    /**
+     * 文件上传大小超限：由 Spring {@code MaxUploadSizeExceededException} 触发。
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public Result<Void> handleMaxUploadSize(MaxUploadSizeExceededException e) {
+        return Result.fail(400, "上传文件过大，最大支持 10 MB");
+    }
+
+    /** 限流拦截：返回 429 Too Many Requests。 */
+    @ExceptionHandler(RateLimitException.class)
+    public Result<Void> handleRateLimit(RateLimitException e) {
         return Result.fail(e.getCode(), e.getMessage());
     }
 

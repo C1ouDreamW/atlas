@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 /**
  * 智能导入任务状态快照（Redis 存 JSON，与轮询接口返回结构一致）。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Data
 @Builder

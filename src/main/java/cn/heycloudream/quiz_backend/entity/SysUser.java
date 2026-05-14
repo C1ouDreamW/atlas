@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 /**
  * 用户表实体，对应数据库表 {@code sys_user}。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Data
 @Builder

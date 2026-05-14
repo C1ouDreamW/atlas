@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 /**
  * 题库对外展示数据（列表与详情共用）。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Data
 @Builder

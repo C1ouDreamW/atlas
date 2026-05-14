@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 /**
  * 试题对外展示数据（列表与详情共用），不包含大模型原始 JSON 等内部字段。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Data
 @Builder

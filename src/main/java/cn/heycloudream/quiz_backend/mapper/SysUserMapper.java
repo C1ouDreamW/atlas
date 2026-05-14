@@ -7,7 +7,7 @@ import org.apache.ibatis.annotations.Mapper;
 /**
  * 用户表 Mapper。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Mapper
 public interface SysUserMapper extends BaseMapper<SysUser> {

@@ -7,7 +7,7 @@ import org.apache.ibatis.annotations.Mapper;
 /**
  * 错题本表 Mapper。
  *
- * @author atlas
+ * @author C1ouD
  */
 @Mapper
 public interface WrongQuestionMapper extends BaseMapper<WrongQuestion> {

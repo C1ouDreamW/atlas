@@ -9,7 +9,7 @@ import cn.heycloudream.quiz_backend.vo.questionbank.QuestionBankVO;
 /**
  * 题库领域服务。
  *
- * @author atlas
+ * @author C1ouD
  */
 public interface QuestionBankService {
 

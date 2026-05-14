@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * 试题 REST 接口：详情查询、全量更新、删除（资源路径以试题为主键）。
  *
- * @author atlas
+ * @author C1ouD
  */
 @RestController
 @RequestMapping("/api/v1/questions")

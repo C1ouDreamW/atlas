@@ -7,7 +7,7 @@ import cn.heycloudream.quiz_backend.vo.user.UserLoginVO;
 /**
  * 用户鉴权领域服务。
  *
- * @author atlas
+ * @author C1ouD
  */
 public interface UserService {
 

@@ -12,7 +12,7 @@ import java.util.List;
  * 全局通用分页响应包装。
  *
  * @param <T> 单条记录类型
- * @author atlas
+ * @author C1ouD
  */
 @Data
 @Builder

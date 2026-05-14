@@ -34,7 +34,7 @@ import java.util.regex.Pattern;
  * 任务状态写入 Redis（Key: {@code smart_quiz:import_status:{bankId}}），供前端轮询。
  * </p>
  *
- * @author atlas
+ * @author C1ouD
  */
 @Slf4j
 @Component
@@ -56,7 +56,10 @@ public class AiQuestionImportAsyncProcessor {
 
     /**
      * 异步执行导入链路；异常在异步线程内捕获并落 Redis，不向调用方抛出。
+     *
+     * @deprecated 旧 @Async 调用链路，请使用 {@link cn.heycloudream.quiz_backend.service.ai.AiImportStreamConsumer}
      */
+    @Deprecated
     @Async(AsyncConfig.AI_IMPORT_EXECUTOR)
     public void processAsync(Long questionBankId, String rawText) {
         importStatusStore.writeProcessing(questionBankId);

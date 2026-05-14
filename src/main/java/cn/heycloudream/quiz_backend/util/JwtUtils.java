@@ -21,7 +21,7 @@ import java.util.Date;
  * 验签失败或过期时统一抛出 {@link BusinessException}(401)。
  * </p>
  *
- * @author atlas
+ * @author C1ouD
  */
 @Component
 @RequiredArgsConstructor
