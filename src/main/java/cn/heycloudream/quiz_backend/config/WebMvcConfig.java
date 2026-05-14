@@ -24,6 +24,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         // 用户注册与登录
                         "/api/v1/users/register",
                         "/api/v1/users/login",
+                        // 题库大厅（公开题库分页列表，无需登录）
+                        "/api/v1/question-banks/public",
                         // 公开热点题库详情（无需登录）
                         "/api/v1/question-banks/*/hot-practice-detail",
                         // Swagger / OpenAPI 文档

@@ -51,6 +51,22 @@ public class QuestionBankServiceImpl implements QuestionBankService {
     }
 
     @Override
+    public PageResultVO<QuestionBankVO> pagePublicBanks(PageRequestDTO page) {
+        Page<QuestionBank> mp = new Page<>(page.getCurrent(), page.getPageSize());
+        LambdaQueryWrapper<QuestionBank> w = new LambdaQueryWrapper<QuestionBank>()
+                .eq(QuestionBank::getIsPublic, 1)
+                .orderByDesc(QuestionBank::getUpdateTime);
+        questionBankMapper.selectPage(mp, w);
+        List<QuestionBankVO> records = mp.getRecords().stream()
+                .map(this::toVo)
+                .collect(Collectors.toList());
+        return PageResultVO.<QuestionBankVO>builder()
+                .total(mp.getTotal())
+                .records(records)
+                .build();
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public Long createBank(Long currentUserId, QuestionBankCreateDTO dto) {
         LocalDateTime now = LocalDateTime.now();

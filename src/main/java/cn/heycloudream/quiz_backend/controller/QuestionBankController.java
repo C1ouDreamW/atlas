@@ -56,6 +56,12 @@ public class QuestionBankController {
         return Result.success(questionBankService.pageMyBanks(userId, page));
     }
 
+    @GetMapping("/public")
+    @Operation(summary = "分页查询所有公开题库列表", description = "查询 is_public=1 的题库，按更新时间降序排列，供刷题大厅展示，无需登录。")
+    public Result<PageResultVO<QuestionBankVO>> pagePublicBanks(@Valid @ModelAttribute PageRequestDTO page) {
+        return Result.success(questionBankService.pagePublicBanks(page));
+    }
+
     @PostMapping
     @Operation(summary = "创建题库", description = "写入创建者用户 ID（由服务端安全上下文解析，占位）。")
     public Result<Long> createBank(@Valid @RequestBody QuestionBankCreateDTO dto) {

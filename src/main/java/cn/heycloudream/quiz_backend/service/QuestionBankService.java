@@ -31,6 +31,11 @@ public interface QuestionBankService {
     void updateBank(Long currentUserId, Long bankId, QuestionBankUpdateDTO dto);
 
     /**
+     * 分页查询公开题库列表（题库大厅），按更新时间降序。
+     */
+    PageResultVO<QuestionBankVO> pagePublicBanks(PageRequestDTO pageRequest);
+
+    /**
      * 删除题库（同时逻辑删除其下全部试题）。
      */
     void deleteBank(Long currentUserId, Long bankId);

@@ -110,6 +110,7 @@ mvn test
 | **用户鉴权** | `POST` | `/api/v1/users/login` | 用户登录，返回 JWT Token | `UserLoginDTO` |
 | **题库管理** | `POST` | `/api/v1/question-banks` | 创建题库 | `QuestionBankCreateDTO` |
 | **题库管理** | `PUT` | `/api/v1/question-banks/{id}`| 更新题库 | `QuestionBankUpdateDTO` |
+| **题库大厅** | `GET` | `/api/v1/question-banks/public` | 分页查询所有公开题库列表（无需登录） | `PageRequestDTO` |
 | **题库管理** | `GET` | `/api/v1/question-banks/{id}/hot-practice-detail` | 获取公开热点题库刷题数据 | — |
 | **智能导题** | `POST` | `/api/v1/question-banks/{id}/ai-import/text` | 异步 AI 文本导题 | `AiQuestionImportTextDTO` |
 | **试题管理** | `GET` | `/api/v1/questions/{id}` | 获取试题详情 | — |
