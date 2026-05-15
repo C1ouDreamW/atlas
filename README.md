@@ -112,8 +112,11 @@ mvn test
 | **题库管理** | `PUT` | `/api/v1/question-banks/{id}`| 更新题库 | `QuestionBankUpdateDTO` |
 | **题库大厅** | `GET` | `/api/v1/question-banks/public` | 分页查询所有公开题库列表（无需登录） | `PageRequestDTO` |
 | **题库管理** | `GET` | `/api/v1/question-banks/{id}/hot-practice-detail` | 获取公开热点题库刷题数据 | — |
-| **智能导题** | `POST` | `/api/v1/question-banks/{id}/ai-import/text` | 异步 AI 文本导题 | `AiQuestionImportTextDTO` |
-| **智能导题** | `POST` | `/api/v1/question-banks/{id}/ai-import/file` | 上传文件异步导题（.txt/.pdf/.docx） | `MultipartFile` |
+| **智能导题** | `POST` | `/api/v1/ai-import/submit` | 上传文件异步导题（.txt/.pdf/.docx） | `MultipartFile` + `bankId` |
+| **智能导题** | `GET` | `/api/v1/ai-import/tasks/{taskId}/status` | 轮询任务进度及预览题目 | — |
+| **智能导题** | `POST` | `/api/v1/question-banks/{id}/questions/batch` | 确认导入预览题目（幂等） | `BatchImportRequestDTO` |
+| ~~智能导题~~ | ~~`POST`~~ | ~~`/api/v1/question-banks/{id}/ai-import/text`~~ | ~~（已废弃）异步 AI 文本导题~~ | ~~`AiQuestionImportTextDTO`~~ |
+| ~~智能导题~~ | ~~`POST`~~ | ~~`/api/v1/question-banks/{id}/ai-import/file`~~ | ~~（已废弃）上传文件异步导题~~ | ~~`MultipartFile`~~ |
 | **试题管理** | `GET` | `/api/v1/questions/{id}` | 获取试题详情 | — |
 | **试题管理** | `PUT` | `/api/v1/questions/{id}` | 更新试题内容 | `QuestionUpdateDTO` |
 
