@@ -45,9 +45,6 @@ build/
 .env
 .env.*
 
-### Docs ###
-docs/
-
 ### github相关 ###
 .github/
 
@@ -55,7 +52,6 @@ docs/
 *.cursor
 .cursorrules
 .deepseek/
-/AGENTS.md
 
 ### JMeter ###
 *.jmx
