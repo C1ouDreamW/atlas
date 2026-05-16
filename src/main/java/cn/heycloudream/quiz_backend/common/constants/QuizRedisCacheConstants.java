@@ -17,12 +17,6 @@ public final class QuizRedisCacheConstants {
     /** 热点题库详情（题库 VO + 全量试题列表）缓存前缀。 */
     private static final String BANK_DETAIL_PREFIX = "smart_quiz:bank_detail:";
 
-    /** 智能导入异步任务状态：{@code smart_quiz:import_status:{bankId}}。 */
-    private static final String AI_IMPORT_STATUS_PREFIX = "smart_quiz:import_status:";
-
-    /** 导入状态 Key TTL（秒）：1 小时，避免脏数据长期占用。 */
-    public static final int AI_IMPORT_STATUS_TTL_SECONDS = 3600;
-
     /** 重建缓存时的互斥锁前缀。 */
     private static final String BANK_DETAIL_LOCK_PREFIX = "smart_quiz:bank_detail:lock:";
 
@@ -52,14 +46,7 @@ public final class QuizRedisCacheConstants {
         return BANK_DETAIL_LOCK_PREFIX + bankId;
     }
 
-    /**
-     * 智能导入状态 Key，供前端轮询（经服务端接口读取，不暴露 Redis 直连）。
-     */
-    public static String importStatusKey(long bankId) {
-        return AI_IMPORT_STATUS_PREFIX + bankId;
-    }
-
-    // ==================== 任务系统 Key（Phase A 新增） ====================
+    // ==================== AI 导入任务系统 Key ====================
 
     /** Redis Stream 任务下发流。 */
     public static final String TASK_STREAM_KEY = "quiz:task:stream";

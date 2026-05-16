@@ -7,14 +7,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.connection.stream.ReadOffset;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Map;
 
 /**
- * Redis Stream 任务派发器：将任务元数据写入 Stream，供消费者抢单。
+ * Redis Stream task dispatcher. Writes task metadata into the stream for the
+ * external worker process to consume.
  *
  * @author atlas
  */
@@ -28,26 +32,37 @@ public class RedisStreamTaskDispatcher {
     private final ObjectMapper objectMapper;
 
     /**
-     * 应用启动时确保 Stream 和消费组存在（幂等）。
+     * Ensure the stream and consumer group exist when the application starts.
      */
     @PostConstruct
     public void initStream() {
         try {
-            stringRedisTemplate.opsForStream().createGroup(
-                    QuizRedisCacheConstants.TASK_STREAM_KEY,
-                    QuizRedisCacheConstants.TASK_STREAM_GROUP);
-            log.info("[Stream] 消费组已创建: {}", QuizRedisCacheConstants.TASK_STREAM_GROUP);
+            stringRedisTemplate.execute((RedisCallback<Object>) connection -> {
+                connection.streamCommands().xGroupCreate(
+                        QuizRedisCacheConstants.TASK_STREAM_KEY.getBytes(StandardCharsets.UTF_8),
+                        QuizRedisCacheConstants.TASK_STREAM_GROUP,
+                        ReadOffset.latest(),
+                        true);
+                return null;
+            });
+            log.info("[Stream] consumer group created: {}", QuizRedisCacheConstants.TASK_STREAM_GROUP);
         } catch (Exception e) {
-            // BUSYGROUP — 消费组已存在，正常情况
-            log.info("[Stream] 消费组已存在或创建失败（可能已存在）: {}", e.getMessage());
+            if (isBusyGroup(e)) {
+                log.info("[Stream] consumer group already exists: {}", QuizRedisCacheConstants.TASK_STREAM_GROUP);
+                return;
+            }
+            log.warn("[Stream] consumer group initialization failed stream={} group={}",
+                    QuizRedisCacheConstants.TASK_STREAM_KEY,
+                    QuizRedisCacheConstants.TASK_STREAM_GROUP,
+                    e);
         }
     }
 
     /**
-     * 将任务元数据写入 Stream，返回 Stream entry ID。
+     * Write task metadata to Redis Stream and return the generated entry ID.
      *
-     * @param meta 任务元数据
-     * @return Stream entry ID（如 1684156800000-0）
+     * @param meta task metadata
+     * @return Stream entry ID, such as 1684156800000-0
      */
     public String dispatch(AiImportTaskMetaVO meta) {
         Map<String, String> fields;
@@ -55,7 +70,7 @@ public class RedisStreamTaskDispatcher {
             String json = objectMapper.writeValueAsString(meta);
             fields = Collections.singletonMap("payload", json);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("序列化任务元数据失败", e);
+            throw new RuntimeException("Failed to serialize task metadata", e);
         }
 
         var recordId = stringRedisTemplate.opsForStream().add(
@@ -63,13 +78,24 @@ public class RedisStreamTaskDispatcher {
                 fields);
         String entryId = recordId.getValue();
 
-        // 截断 Stream，保留最近 N 条
         stringRedisTemplate.opsForStream().trim(
                 QuizRedisCacheConstants.TASK_STREAM_KEY,
                 QuizRedisCacheConstants.TASK_STREAM_MAX_LEN,
                 true);
 
-        log.info("[Stream] 任务已入队 entryId={} taskId={}", entryId, meta.getBankId());
+        log.info("[Stream] task dispatched entryId={} taskId={}", entryId, meta.getTaskId());
         return entryId;
+    }
+
+    private static boolean isBusyGroup(Throwable e) {
+        Throwable current = e;
+        while (current != null) {
+            String message = current.getMessage();
+            if (message != null && message.contains("BUSYGROUP")) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 }

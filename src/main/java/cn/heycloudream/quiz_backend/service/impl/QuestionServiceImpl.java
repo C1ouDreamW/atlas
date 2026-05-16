@@ -23,7 +23,9 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -68,14 +70,16 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void batchImportPreview(Long bankId, List<QuestionPreviewVO> previews) {
+    public void batchImportPreview(Long currentUserId, Long bankId, List<QuestionPreviewVO> previews) {
+        requireOwnedBank(currentUserId, bankId);
         if (previews == null || previews.isEmpty()) {
             return;
         }
+        List<QuestionPreviewVO> uniquePreviews = dedupePreviews(previews);
         LocalDateTime now = LocalDateTime.now();
-        List<Question> entities = new ArrayList<>(previews.size());
-        int sortNo = 1;
-        for (QuestionPreviewVO p : previews) {
+        List<Question> entities = new ArrayList<>(uniquePreviews.size());
+        int sortNo = nextSortNo(bankId);
+        for (QuestionPreviewVO p : uniquePreviews) {
             String optionsJson;
             String answerJson;
             try {
@@ -188,6 +192,43 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     public void removeQuestionsByBankId(Long bankId) {
         remove(new LambdaQueryWrapper<Question>().eq(Question::getQuestionBankId, bankId));
         questionBankDetailCacheEvictor.evict(bankId);
+    }
+
+    /**
+     * 按题干 + 题型 + 答案去重，保留首次出现顺序。
+     */
+    private List<QuestionPreviewVO> dedupePreviews(List<QuestionPreviewVO> previews) {
+        Map<String, QuestionPreviewVO> ordered = new LinkedHashMap<>();
+        for (QuestionPreviewVO p : previews) {
+            if (p == null || p.getStem() == null || p.getStem().isBlank()) {
+                continue;
+            }
+            ordered.putIfAbsent(dedupeKey(p), p);
+        }
+        return new ArrayList<>(ordered.values());
+    }
+
+    private String dedupeKey(QuestionPreviewVO p) {
+        String type = p.getQuestionType() == null ? "" : p.getQuestionType().trim();
+        String stem = p.getStem().trim();
+        String answer;
+        try {
+            answer = objectMapper.writeValueAsString(p.getAnswer());
+        } catch (JsonProcessingException e) {
+            answer = String.valueOf(p.getAnswer());
+        }
+        return type + "\u0000" + stem + "\u0000" + answer;
+    }
+
+    private int nextSortNo(Long bankId) {
+        Question max = baseMapper.selectOne(new LambdaQueryWrapper<Question>()
+                .eq(Question::getQuestionBankId, bankId)
+                .orderByDesc(Question::getSortNo)
+                .last("LIMIT 1"));
+        if (max == null || max.getSortNo() == null) {
+            return 1;
+        }
+        return max.getSortNo() + 1;
     }
 
     private void requireOwnedBank(Long currentUserId, Long bankId) {

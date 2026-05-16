@@ -8,10 +8,9 @@ spring:
   datasource:
     url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:quiz_atlas}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: ${DB_USER:root}
-    password: ${DB_PASSWORD:root} # 部署后通过环境变量替换
+    password: ${DB_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
-  
-  # Redis配置
+
   data:
     redis:
       host: ${REDIS_HOST:127.0.0.1}
@@ -21,31 +20,22 @@ spring:
       repositories:
         enabled: false
 
-# 大模型 API 密钥建议通过环境变量注入
 quiz:
   ai-import:
     rate-limit:
-      max-requests-per-hour: 5
-    task-timeout-ms: 600000  # 10 分钟
-  async:
-    ai-import:
-    # 线程池配置，适当调整以满足并发需求
-      core-pool-size: 2
-      max-pool-size: 4
-      queue-capacity: 200
-  llm:
-    base-url: https://api.deepseek.com
-    api-key: ${DEEPSEEK_API_KEY:} 
-    model: deepseek-v4-flash
-    chat-path: /v1/chat/completions
-    connect-timeout-ms: 30000
-    read-timeout-ms: 300000
+      max-requests-per-hour: ${AI_IMPORT_RATE_LIMIT_PER_HOUR:5}
+    # 任务整体超时阈值（毫秒）。需 ≥ MinerU 单任务轮询超时(默认 1800s) + LLM 调用时间，
+    # 否则 Watchdog 会强行把仍在处理中的长任务标为 FAILED。
+    task-timeout-ms: ${AI_IMPORT_TASK_TIMEOUT_MS:1800000}
+  filestorage:
+    # 文件落盘根目录。Java 后端与 Python Worker 必须能访问同一目录（绝对路径）。
+    # Windows 默认 ./data/upload，Linux 可通过 FILE_UPLOAD_DIR 环境变量覆盖。
+    local-dir: ${FILE_UPLOAD_DIR:./data/upload}
 
 jwt:
   secret: ${JWT_SECRET:YOUR_SUPER_SECRET_KEY_MUST_BE_LONG_ENOUGH}
-  expiration: 864000000 # 10天，单位为毫秒
+  expiration: 864000000
 
-# ==================== SpringDoc OpenAPI 配置 ====================
 springdoc:
   api-docs:
     enabled: true
