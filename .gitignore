@@ -50,15 +50,8 @@ build/
 
 ### cursor ###
 *.cursor
-.cursorrules
 .deepseek/
 
-### JMeter ###
-*.jmx
-*.jtl
-jmeter.log
-report-cold-start
-report-cache-hit
 
 ### 测试题目文件 ###
 assets/
