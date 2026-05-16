@@ -1,7 +1,7 @@
 package cn.heycloudream.quiz_backend.controller;
 
 import cn.heycloudream.quiz_backend.common.vo.Result;
-import cn.heycloudream.quiz_backend.service.impl.AiQuestionImportServiceImpl;
+import cn.heycloudream.quiz_backend.service.AiQuestionImportService;
 import cn.heycloudream.quiz_backend.service.ai.AiImportRateLimiter;
 import cn.heycloudream.quiz_backend.service.ai.AiImportResultStore;
 import cn.heycloudream.quiz_backend.service.ai.AiImportTaskStatusStore;
@@ -22,7 +22,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * AI 智能导入控制器（新任务体系，基于 Redis Stream）。
+ * AI 智能导入控制器（流程 A 生产者侧 + 状态轮询）。
+ * <p>
+ * 文档解析与大模型调用由 transf-python Worker 完成，Java 仅负责落盘 / 入 Stream / 提供任务状态。
+ * </p>
  *
  * @author atlas
  */
@@ -30,24 +33,19 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/v1/ai-import")
 @RequiredArgsConstructor
 @Validated
-@Tag(name = "AI 智能导入", description = "文件/文本上传 → Stream 派发 → 状态轮询 → 预览确认")
+@Tag(name = "AI 智能导入", description = "文件上传 → Stream 派发 → 状态轮询 → 预览确认")
 public class AiImportController {
 
-    private final AiQuestionImportServiceImpl aiQuestionImportService;
+    private final AiQuestionImportService aiQuestionImportService;
     private final AiImportTaskStatusStore statusStore;
     private final AiImportResultStore resultStore;
     private final AiImportRateLimiter rateLimiter;
 
-    /**
-     * 提交文件导入任务。
-     * <p>
-     * 文件落盘 → 生成 taskId → 写元数据 → 入 Stream → 返回 taskId。
-     * </p>
-     */
     @PostMapping(value = "/submit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
             summary = "提交文件导入任务（异步）",
-            description = "上传 .txt/.pdf/.docx 文件后立即返回 taskId，后台经 Stream 派发至 Worker 解析。轮询状态见 GET /tasks/{taskId}/status。")
+            description = "上传 .txt/.pdf/.docx 文件后立即返回 taskId，后台经 Stream 派发至 Python Worker 解析。"
+                    + "轮询状态见 GET /tasks/{taskId}/status。")
     public Result<AiImportSubmitVO> submitImport(
             @RequestParam("file") MultipartFile file,
             @RequestParam("bankId") Long bankId) {
@@ -57,23 +55,15 @@ public class AiImportController {
         return Result.success(vo);
     }
 
-    /**
-     * 轮询任务状态。
-     * <p>
-     * 若状态为 PARSED 且结果存在，自动附带预览题列表。
-     * </p>
-     */
     @GetMapping("/tasks/{taskId}/status")
     @Operation(
             summary = "轮询 AI 导入任务状态",
             description = "返回任务当前状态。当 status=PARSED 时，响应中自动附带解析出的题目预览列表（questions 字段）。")
     public Result<AiImportTaskStatusVO> getTaskStatus(@PathVariable("taskId") String taskId) {
-        // 任何人都可以查看任务状态（taskId 已足够保密）
         AiImportTaskStatusVO vo = statusStore.read(taskId).orElse(null);
         if (vo == null) {
             return Result.success(null);
         }
-        // PARSED 态时，注入预览题列表
         if ("PARSED".equals(vo.getStatus())) {
             resultStore.readQuestions(taskId).ifPresent(vo::setQuestions);
             vo.setTotalCount(vo.getQuestions() != null ? vo.getQuestions().size() : 0);

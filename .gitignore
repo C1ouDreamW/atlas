@@ -55,3 +55,6 @@ build/
 
 ### 测试题目文件 ###
 assets/
+
+### Python Worker debug 产物 ###
+transf-python/temp/

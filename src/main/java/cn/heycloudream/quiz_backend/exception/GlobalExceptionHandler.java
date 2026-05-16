@@ -39,14 +39,6 @@ public class GlobalExceptionHandler {
         return Result.fail(e.getCode(), e.getMessage());
     }
 
-    /**
-     * 同步路径若误调大模型客户端，将 LLM 失败映射为 502，避免未处理异常直达容器。
-     */
-    @ExceptionHandler(LlmInvokeException.class)
-    public Result<Void> handleLlmInvoke(LlmInvokeException e) {
-        return Result.fail(HttpStatus.BAD_GATEWAY.value(), e.getMessage());
-    }
-
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Result<Void> handleValidation(MethodArgumentNotValidException e) {
         return Result.fail(400, firstFieldErrorMessage(e.getBindingResult()));

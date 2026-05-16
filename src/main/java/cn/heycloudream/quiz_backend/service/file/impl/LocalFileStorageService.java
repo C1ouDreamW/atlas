@@ -50,7 +50,9 @@ public class LocalFileStorageService implements FileStorageService {
         Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
         log.info("[文件存储] 文件已落盘: {} → {}", originalFilename, targetPath);
 
-        return FILE_URL_PREFIX + targetPath.toString();
+        // 统一使用正斜杠输出 file:// 路径，避免 Windows 反斜杠在 Python 端 unquote 时被误解
+        String normalizedPath = targetPath.toString().replace('\\', '/');
+        return FILE_URL_PREFIX + normalizedPath;
     }
 
     @Override

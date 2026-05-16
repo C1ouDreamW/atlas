@@ -33,7 +33,7 @@ public interface QuestionService extends IService<Question> {
      * @param bankId   目标题库 ID
      * @param previews 前端确认后的预览题目列表
      */
-    void batchImportPreview(Long bankId, List<QuestionPreviewVO> previews);
+    void batchImportPreview(Long currentUserId, Long bankId, List<QuestionPreviewVO> previews);
 
     /**
      * 分页查询指定题库下的试题（需校验题库归属当前用户）。

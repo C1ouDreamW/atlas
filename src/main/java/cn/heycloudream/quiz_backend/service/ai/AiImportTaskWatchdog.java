@@ -34,9 +34,14 @@ public class AiImportTaskWatchdog {
     private final AiImportTaskMetaStore metaStore;
 
     /**
-     * 任务超时阈值（毫秒），默认 10 分钟。
+     * 任务超时阈值（毫秒），默认 30 分钟。
+     * <p>
+     * 必须 ≥ Python Worker 中 MinerU 轮询超时（默认 1800s）+ LLM 调用时间，否则会
+     * 误将仍在正常处理中的长任务标为 FAILED，导致前端轮询出现 PROCESSING → FAILED →
+     * PARSED 的状态抖动。
+     * </p>
      */
-    @Value("${quiz.ai-import.task-timeout-ms:600000}")
+    @Value("${quiz.ai-import.task-timeout-ms:1800000}")
     private long taskTimeoutMs;
 
     /**
@@ -106,10 +111,14 @@ public class AiImportTaskWatchdog {
         long elapsed = System.currentTimeMillis() - submittedAt.get();
         if (elapsed > taskTimeoutMs) {
             long elapsedMinutes = elapsed / 60_000;
-            statusStore.markFailed(taskId,
+            // CAS：仅当当前仍为 PROCESSING 时才标 FAILED，避免覆盖 Worker 刚写入的 PARSED。
+            boolean marked = statusStore.markFailedIfProcessing(taskId,
                     "任务处理超时（已运行 " + elapsedMinutes + " 分钟，阈值 " + (taskTimeoutMs / 60_000) + " 分钟）");
-            log.warn("[Watchdog] 任务超时已标记 FAILED taskId={} elapsedMinutes={}", taskId, elapsedMinutes);
-            return true;
+            if (marked) {
+                log.warn("[Watchdog] 任务超时已标记 FAILED taskId={} elapsedMinutes={}", taskId, elapsedMinutes);
+                return true;
+            }
+            log.info("[Watchdog] 标 FAILED 时发现状态已变更，跳过 taskId={}", taskId);
         }
         return false;
     }
