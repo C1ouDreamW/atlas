@@ -30,6 +30,6 @@ public class PageResultVO<T> {
     /**
      * 当前页数据列表。
      */
-    @Schema(description = "当前页数据列表")
+    @Schema(description = "当前页数据列表（字段名为 records，非 list/items）")
     private List<T> records;
 }

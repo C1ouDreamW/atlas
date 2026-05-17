@@ -16,19 +16,22 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "统一 API 响应")
+@Schema(description = """
+        统一 API 响应包装。HTTP 状态码通常为 200；
+        业务成败以 code 为准（200 成功，400/401/403/404/409/429/500 等为业务失败）。
+        """)
 public class Result<T> {
 
     /** 业务成功状态码。 */
     public static final int SUCCESS_CODE = 200;
 
-    @Schema(description = "业务状态码", example = "200")
+    @Schema(description = "业务状态码：200 成功；4xx/5xx 为业务失败（HTTP 仍多为 200）", example = "200")
     private int code;
 
     @Schema(description = "提示信息", example = "success")
     private String message;
 
-    @Schema(description = "业务数据")
+    @Schema(description = "业务数据；失败时常为 null；Void 接口成功时也为 null")
     private T data;
 
     /**

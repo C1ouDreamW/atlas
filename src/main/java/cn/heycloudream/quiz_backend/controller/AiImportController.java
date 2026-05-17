@@ -1,6 +1,8 @@
 package cn.heycloudream.quiz_backend.controller;
 
 import cn.heycloudream.quiz_backend.common.vo.Result;
+import cn.heycloudream.quiz_backend.config.OpenApiConfig;
+import cn.heycloudream.quiz_backend.config.openapi.ApiDocStandardResponses;
 import cn.heycloudream.quiz_backend.service.AiQuestionImportService;
 import cn.heycloudream.quiz_backend.service.ai.AiImportRateLimiter;
 import cn.heycloudream.quiz_backend.service.ai.AiImportResultStore;
@@ -9,6 +11,10 @@ import cn.heycloudream.quiz_backend.util.UserContextHolder;
 import cn.heycloudream.quiz_backend.vo.ai.AiImportSubmitVO;
 import cn.heycloudream.quiz_backend.vo.ai.AiImportTaskStatusVO;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -33,7 +39,9 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/v1/ai-import")
 @RequiredArgsConstructor
 @Validated
-@Tag(name = "AI 智能导入", description = "文件上传 → Stream 派发 → 状态轮询 → 预览确认")
+@Tag(name = "AI 智能导入", description = "文件上传 → Stream 派发 → 状态轮询 → 预览确认入库（须 JWT）")
+@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
+@ApiDocStandardResponses
 public class AiImportController {
 
     private final AiQuestionImportService aiQuestionImportService;
@@ -44,10 +52,25 @@ public class AiImportController {
     @PostMapping(value = "/submit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
             summary = "提交文件导入任务（异步）",
-            description = "上传 .txt/.pdf/.docx 文件后立即返回 taskId，后台经 Stream 派发至 Python Worker 解析。"
-                    + "轮询状态见 GET /tasks/{taskId}/status。")
+            description = """
+                    `multipart/form-data` 字段：
+                    - **file**（必填）：.txt / .pdf / .docx，最大 10MB
+                    - **bankId**（必填）：目标题库 ID（form 字段；亦可通过 query `?bankId=` 传递，二者等价）
+
+                    成功立即返回 taskId（status=SUBMITTED），后台经 Redis Stream 派发至 Python Worker。
+                    轮询：`GET /api/v1/ai-import/tasks/{taskId}/status`。
+                    预览确认入库：`POST /api/v1/question-banks/{bankId}/questions/batch`。
+
+                    失败：code=400（文件/格式/大小）、401、404（题库无权）、429（默认每用户每小时 5 次，见配置 quiz.ai-import.rate-limit）。
+                    """)
     public Result<AiImportSubmitVO> submitImport(
+            @Parameter(
+                    description = "导入文件，支持 txt / pdf / docx，最大 10MB",
+                    required = true,
+                    content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @Schema(type = "string", format = "binary")))
             @RequestParam("file") MultipartFile file,
+            @Parameter(description = "目标题库 ID（须为当前用户所属题库）", required = true, example = "1001")
             @RequestParam("bankId") Long bankId) {
         Long userId = UserContextHolder.get();
         rateLimiter.checkAndConsume(userId);
@@ -58,8 +81,19 @@ public class AiImportController {
     @GetMapping("/tasks/{taskId}/status")
     @Operation(
             summary = "轮询 AI 导入任务状态",
-            description = "返回任务当前状态。当 status=PARSED 时，响应中自动附带解析出的题目预览列表（questions 字段）。")
-    public Result<AiImportTaskStatusVO> getTaskStatus(@PathVariable("taskId") String taskId) {
+            description = """
+                    任务状态流转：SUBMITTED → PROCESSING → PARSED →（用户确认 batch）→ IMPORTED；
+                    任意环节失败为 FAILED（message 含原因）。
+
+                    - **PARSED**：data.questions 为预览列表（QuestionPreviewVO，options/answer 为数组）
+                    - **任务不存在或已过期**：code=200 且 **data=null**（非 HTTP 404）
+                    - 当前实现不校验 task 归属，请勿泄露 taskId
+
+                    建议前端 2~5 秒轮询，终态为 IMPORTED 或 FAILED 后停止。
+                    """)
+    public Result<AiImportTaskStatusVO> getTaskStatus(
+            @Parameter(description = "提交接口返回的任务 ID（UUID）", required = true)
+            @PathVariable("taskId") String taskId) {
         AiImportTaskStatusVO vo = statusStore.read(taskId).orElse(null);
         if (vo == null) {
             return Result.success(null);

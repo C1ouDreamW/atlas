@@ -104,23 +104,26 @@ mvn test
 
 *完整的交互契约与请求示例，可通过启动应用并访问 Swagger UI 获得 (通常位于 `http://localhost:8080/swagger-ui.html`)*。以下为项目核心 RESTful 范式的 API 总览：
 
-| 功能模块 | HTTP | 路由路径 | 接口描述 | 预期参数预估 |
+| 功能模块 | HTTP | 路由路径 | 鉴权 | 说明 |
 | --- | --- | --- | --- | --- |
-| **用户鉴权** | `POST` | `/api/v1/users/register` | 用户注册 | `UserRegisterDTO` |
-| **用户鉴权** | `POST` | `/api/v1/users/login` | 用户登录，返回 JWT Token | `UserLoginDTO` |
-| **题库管理** | `POST` | `/api/v1/question-banks` | 创建题库 | `QuestionBankCreateDTO` |
-| **题库管理** | `PUT` | `/api/v1/question-banks/{id}`| 更新题库 | `QuestionBankUpdateDTO` |
-| **题库大厅** | `GET` | `/api/v1/question-banks/public` | 分页查询所有公开题库列表（无需登录） | `PageRequestDTO` |
-| **题库管理** | `GET` | `/api/v1/question-banks/{id}/hot-practice-detail` | 获取公开热点题库刷题数据 | — |
-| **智能导题** | `POST` | `/api/v1/ai-import/submit` | 上传文件异步导题（.txt/.pdf/.docx） | `MultipartFile` + `bankId` |
-| **智能导题** | `GET` | `/api/v1/ai-import/tasks/{taskId}/status` | 轮询任务进度及预览题目 | — |
-| **智能导题** | `POST` | `/api/v1/question-banks/{id}/questions/batch` | 确认导入预览题目（幂等） | `BatchImportRequestDTO` |
-| ~~智能导题~~ | ~~`POST`~~ | ~~`/api/v1/question-banks/{id}/ai-import/text`~~ | ~~（已废弃）异步 AI 文本导题~~ | ~~`AiQuestionImportTextDTO`~~ |
-| ~~智能导题~~ | ~~`POST`~~ | ~~`/api/v1/question-banks/{id}/ai-import/file`~~ | ~~（已废弃）上传文件异步导题~~ | ~~`MultipartFile`~~ |
-| **试题管理** | `GET` | `/api/v1/questions/{id}` | 获取试题详情 | — |
-| **试题管理** | `PUT` | `/api/v1/questions/{id}` | 更新试题内容 | `QuestionUpdateDTO` |
+| **用户鉴权** | `POST` | `/api/v1/users/register` | 否 | 用户注册 |
+| **用户鉴权** | `POST` | `/api/v1/users/login` | 否 | 登录，返回 JWT |
+| **题库管理** | `GET` | `/api/v1/question-banks` | JWT | 我的题库分页（`current`/`pageSize`） |
+| **题库大厅** | `GET` | `/api/v1/question-banks/public` | 否 | 公开题库分页 |
+| **题库管理** | `POST` | `/api/v1/question-banks` | JWT | 创建题库 |
+| **题库管理** | `PUT` | `/api/v1/question-banks/{bankId}` | JWT | 更新题库 |
+| **题库管理** | `DELETE` | `/api/v1/question-banks/{bankId}` | JWT | 删除题库 |
+| **刷题聚合** | `GET` | `/api/v1/question-banks/{bankId}/hot-practice-detail` | 否 | 公开题库全量试题（Redis） |
+| **试题管理** | `GET` | `/api/v1/question-banks/{bankId}/questions` | JWT | 题库下试题分页（可选 `keyword`） |
+| **试题管理** | `POST` | `/api/v1/question-banks/{bankId}/questions` | JWT | 新增试题 |
+| **试题管理** | `GET` | `/api/v1/questions/{id}` | JWT | 试题详情 |
+| **试题管理** | `PUT` | `/api/v1/questions/{id}` | JWT | 更新试题 |
+| **试题管理** | `DELETE` | `/api/v1/questions/{id}` | JWT | 删除试题 |
+| **智能导题** | `POST` | `/api/v1/ai-import/submit` | JWT | 上传文件异步导题（multipart） |
+| **智能导题** | `GET` | `/api/v1/ai-import/tasks/{taskId}/status` | JWT | 轮询任务与预览 |
+| **智能导题** | `POST` | `/api/v1/question-banks/{bankId}/questions/batch` | JWT | 确认导入（幂等） |
 
-> 所有接口统一返回标准化 `Result<T>` 格式，包含标识码 `code`、提示消息 `message` 以及业务承载体 `data`。
+> 除标注「否」外，请求头须 `Authorization: Bearer <token>`。统一响应 `Result<T>`（`code`/`message`/`data`）；业务失败时 **HTTP 仍为 200**，以 `code` 区分。分页 `data` 为 `PageResultVO`（`total` + `records`）。**完整 Schema 与 Try it out 见 Swagger UI。**
 
 ## 📁 核心项目目录结构 (Project Structure)
 

@@ -32,12 +32,12 @@ public class QuestionBankVO {
     @Schema(description = "题库描述")
     private String description;
 
-    @Schema(description = "是否公开：0-否，1-是", example = "1")
+    @Schema(description = "是否公开：0=私有，1=公开（公开题库可出现在大厅与热点刷题接口）", example = "1")
     private Integer isPublic;
 
-    @Schema(description = "创建时间")
+    @Schema(description = "创建时间", type = "string", format = "date-time")
     private LocalDateTime createTime;
 
-    @Schema(description = "更新时间")
+    @Schema(description = "更新时间", type = "string", format = "date-time")
     private LocalDateTime updateTime;
 }
