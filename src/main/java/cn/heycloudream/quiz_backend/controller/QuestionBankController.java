@@ -3,6 +3,9 @@ package cn.heycloudream.quiz_backend.controller;
 import cn.heycloudream.quiz_backend.common.dto.PageRequestDTO;
 import cn.heycloudream.quiz_backend.common.vo.PageResultVO;
 import cn.heycloudream.quiz_backend.common.vo.Result;
+import cn.heycloudream.quiz_backend.config.OpenApiConfig;
+import cn.heycloudream.quiz_backend.config.openapi.ApiDocPublicEndpoint;
+import cn.heycloudream.quiz_backend.config.openapi.ApiDocStandardResponses;
 import cn.heycloudream.quiz_backend.dto.ai.BatchImportRequestDTO;
 import cn.heycloudream.quiz_backend.dto.question.QuestionInBankPageQueryDTO;
 import cn.heycloudream.quiz_backend.dto.question.QuestionUpdateDTO;
@@ -24,10 +27,13 @@ import cn.heycloudream.quiz_backend.vo.question.QuestionVO;
 import cn.heycloudream.quiz_backend.vo.questionbank.QuestionBankDetailBundleVO;
 import cn.heycloudream.quiz_backend.vo.questionbank.QuestionBankVO;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -51,7 +57,9 @@ import java.util.List;
 @RequestMapping("/api/v1/question-banks")
 @RequiredArgsConstructor
 @Validated
-@Tag(name = "题库管理", description = "题库 CRUD、分页及题库下试题列表与新增")
+@Tag(name = "题库管理", description = "题库 CRUD、公开大厅、热点刷题聚合、题库下试题与 AI 批量入库")
+@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
+@ApiDocStandardResponses
 public class QuestionBankController {
 
     private final QuestionBankService questionBankService;
@@ -64,20 +72,32 @@ public class QuestionBankController {
     private final AiImportTaskMetaStore taskMetaStore;
 
     @GetMapping
-    @Operation(summary = "分页查询当前用户的题库列表", description = "按更新时间倒序；当前用户 ID 由服务端安全上下文解析。")
-    public Result<PageResultVO<QuestionBankVO>> pageMyBanks(@Valid @ModelAttribute PageRequestDTO page) {
+    @Operation(
+            summary = "分页查询当前用户的题库列表",
+            description = "须 JWT。Query：`current`、`pageSize`（必填）。按更新时间倒序。")
+    public Result<PageResultVO<QuestionBankVO>> pageMyBanks(
+            @ParameterObject @Valid @ModelAttribute PageRequestDTO page) {
         Long userId = UserContextHolder.get();
         return Result.success(questionBankService.pageMyBanks(userId, page));
     }
 
     @GetMapping("/public")
-    @Operation(summary = "分页查询所有公开题库列表", description = "查询 is_public=1 的题库，按更新时间降序，供刷题大厅展示，无需登录。")
-    public Result<PageResultVO<QuestionBankVO>> pagePublicBanks(@Valid @ModelAttribute PageRequestDTO page) {
+    @ApiDocPublicEndpoint
+    @Operation(
+            summary = "分页查询所有公开题库列表",
+            description = """
+                    **无需登录。** Query：`current`、`pageSize`（必填）。
+                    仅 is_public=1，按更新时间降序，供刷题大厅展示。
+                    """)
+    public Result<PageResultVO<QuestionBankVO>> pagePublicBanks(
+            @ParameterObject @Valid @ModelAttribute PageRequestDTO page) {
         return Result.success(questionBankService.pagePublicBanks(page));
     }
 
     @PostMapping
-    @Operation(summary = "创建题库")
+    @Operation(
+            summary = "创建题库",
+            description = "须 JWT。成功 data 为新题库 ID（Long）。失败：code=401。")
     public Result<Long> createBank(@Valid @RequestBody QuestionBankCreateDTO dto) {
         Long userId = UserContextHolder.get();
         Long id = questionBankService.createBank(userId, dto);
@@ -85,18 +105,30 @@ public class QuestionBankController {
     }
 
     @GetMapping("/{bankId}/hot-practice-detail")
+    @ApiDocPublicEndpoint
     @Operation(
             summary = "获取公开热点题库刷题聚合数据（Redis 缓存）",
-            description = "对应流程 B：先读 Redis（Key: smart_quiz:bank_detail:{bankId}），未命中回源 MySQL；仅 isPublic=1 的题库可用。")
-    public Result<QuestionBankDetailBundleVO> getHotPracticeDetail(@PathVariable("bankId") Long bankId) {
+            description = """
+                    **无需登录。** 返回题库信息 + 全量试题（QuestionBankDetailBundleVO）。
+                    仅 is_public=1 的公开题库；失败：code=404 不存在，code=403 非公开题库。
+                    """)
+    public Result<QuestionBankDetailBundleVO> getHotPracticeDetail(
+            @Parameter(description = "题库 ID", required = true, example = "1")
+            @PathVariable("bankId") Long bankId) {
         return Result.success(questionBankHotDetailService.getHotPublicBankDetail(bankId));
     }
 
     @GetMapping("/{bankId}/questions")
-    @Operation(summary = "分页查询指定题库下的试题", description = "路径中的 bankId 与当前用户归属校验一致后方可访问。")
+    @Operation(
+            summary = "分页查询指定题库下的试题",
+            description = """
+                    须 JWT 且为题库所有者。Query：`current`、`pageSize`（必填），`keyword`（可选，题干模糊）。
+                    失败：code=404 题库不存在或无权。
+                    """)
     public Result<PageResultVO<QuestionVO>> pageQuestionsInBank(
+            @Parameter(description = "题库 ID", required = true, example = "1001")
             @PathVariable("bankId") Long bankId,
-            @Valid @ModelAttribute QuestionInBankPageQueryDTO query) {
+            @ParameterObject @Valid @ModelAttribute QuestionInBankPageQueryDTO query) {
         Long userId = UserContextHolder.get();
         return Result.success(questionService.pageQuestionsInBank(userId, bankId, query));
     }
@@ -104,8 +136,13 @@ public class QuestionBankController {
     @PostMapping("/{bankId}/questions")
     @Operation(
             summary = "在指定题库下新增试题",
-            description = "请求体字段与试题全量更新 DTO 一致，无需携带题库 ID，题库以路径 bankId 为准。")
+            description = """
+                    须 JWT。请求体为 QuestionUpdateDTO（含 optionsJson、answerJson 等 JSON 字符串字段），
+                    **勿传 questionBankId**，题库以路径 bankId 为准。
+                    成功 data 为新试题 ID。失败：code=404。
+                    """)
     public Result<Long> createQuestionInBank(
+            @Parameter(description = "题库 ID", required = true, example = "1001")
             @PathVariable("bankId") Long bankId,
             @Valid @RequestBody QuestionUpdateDTO body) {
         Long userId = UserContextHolder.get();
@@ -116,8 +153,16 @@ public class QuestionBankController {
     @PostMapping("/{bankId}/questions/batch")
     @Operation(
             summary = "批量确认导入 AI 解析题目（幂等）",
-            description = "前端预览确认后提交。同一 taskId 只落库一次，重复提交直接返回成功。落库完成后清理 Redis 预览缓存。")
+            description = """
+                    须 JWT。前端在 status=PARSED 预览确认后提交 BatchImportRequestDTO。
+                    questions 使用 QuestionPreviewVO（options/answer 为数组，与预览接口一致）。
+
+                    - 同一 taskId **仅落库一次**：已导入再次提交 code=200、data=null
+                    - 并发落库中：code=409「该任务正在导入中」
+                    - taskId 无效/过期：code=400；task 与 bankId/用户不匹配：code=403
+                    """)
     public Result<Void> batchImportQuestions(
+            @Parameter(description = "题库 ID", required = true, example = "1001")
             @PathVariable("bankId") Long bankId,
             @Valid @RequestBody BatchImportRequestDTO body) {
         Long userId = UserContextHolder.get();
@@ -183,8 +228,11 @@ public class QuestionBankController {
     }
 
     @PutMapping("/{bankId}")
-    @Operation(summary = "全量更新题库", description = "仅题库所有者可以更新。")
+    @Operation(
+            summary = "全量更新题库",
+            description = "须 JWT，仅题库所有者。成功 data=null。失败：code=404。")
     public Result<Void> updateBank(
+            @Parameter(description = "题库 ID", required = true, example = "1001")
             @PathVariable("bankId") Long bankId,
             @Valid @RequestBody QuestionBankUpdateDTO dto) {
         Long userId = UserContextHolder.get();
@@ -193,8 +241,12 @@ public class QuestionBankController {
     }
 
     @DeleteMapping("/{bankId}")
-    @Operation(summary = "删除题库", description = "逻辑删除题库，并级联逻辑删除其下全部试题。")
-    public Result<Void> deleteBank(@PathVariable("bankId") Long bankId) {
+    @Operation(
+            summary = "删除题库",
+            description = "须 JWT，逻辑删除题库并级联逻辑删除其下全部试题。失败：code=404。")
+    public Result<Void> deleteBank(
+            @Parameter(description = "题库 ID", required = true, example = "1001")
+            @PathVariable("bankId") Long bankId) {
         Long userId = UserContextHolder.get();
         questionBankService.deleteBank(userId, bankId);
         return Result.success(null);

@@ -34,12 +34,18 @@ public class QuestionUpdateDTO {
 
     @NotBlank(message = "选项 JSON 不能为空")
     @Size(max = ValidationConstants.QUESTION_OPTIONS_JSON_MAX, message = "选项 JSON 过长")
-    @Schema(description = "选项等结构化数据（JSON 字符串）", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(
+            description = "选项 JSON 数组字符串，如 [\"选项A\",\"选项B\"]",
+            example = "[\"TCP\",\"UDP\",\"IP\",\"ICMP\"]",
+            requiredMode = Schema.RequiredMode.REQUIRED)
     private String optionsJson;
 
     @NotBlank(message = "答案 JSON 不能为空")
     @Size(max = ValidationConstants.QUESTION_ANSWER_JSON_MAX, message = "答案 JSON 过长")
-    @Schema(description = "标准答案（JSON 字符串）", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(
+            description = "答案 JSON 数组字符串，如 [\"A\"]、[\"A\",\"C\"]；判断题 [\"T\"] 或 [\"F\"]",
+            example = "[\"A\",\"B\"]",
+            requiredMode = Schema.RequiredMode.REQUIRED)
     private String answerJson;
 
     @Size(max = ValidationConstants.QUESTION_ANALYSIS_MAX, message = "解析过长")

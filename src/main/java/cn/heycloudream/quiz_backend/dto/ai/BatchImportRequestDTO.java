@@ -19,7 +19,7 @@ import java.util.List;
 public class BatchImportRequestDTO {
 
     @NotBlank(message = "任务 ID 不能为空")
-    @Schema(description = "原 AI 解析任务 ID")
+    @Schema(description = "AI 提交/轮询接口返回的任务 ID（UUID）", example = "a1b2c3d4e5f67890abcdef1234567890")
     private String taskId;
 
     @NotEmpty(message = "导入题目列表不能为空")

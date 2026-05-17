@@ -32,10 +32,14 @@ public class QuestionVO {
     @Schema(description = "题干纯文本")
     private String stem;
 
-    @Schema(description = "选项等结构化数据（JSON 字符串）")
+    @Schema(
+            description = "选项 JSON 数组字符串。单选/多选为选项文案列表，如 [\"TCP\",\"UDP\",\"IP\"]",
+            example = "[\"8.31 J/(mol·K)\",\"8.31 kJ/(mol·K)\",\"0.0821 L·atm/(mol·K)\"]")
     private String optionsJson;
 
-    @Schema(description = "标准答案（JSON 字符串）")
+    @Schema(
+            description = "答案 JSON 数组字符串。单选/多选为大写字母选项标，如 [\"A\"]、[\"A\",\"C\"]；判断题为 [\"T\"] 或 [\"F\"]",
+            example = "[\"C\"]")
     private String answerJson;
 
     @Schema(description = "题目解析")
@@ -44,9 +48,9 @@ public class QuestionVO {
     @Schema(description = "题库内排序号", example = "1")
     private Integer sortNo;
 
-    @Schema(description = "创建时间")
+    @Schema(description = "创建时间", type = "string", format = "date-time", example = "2026-05-14T00:00:46")
     private LocalDateTime createTime;
 
-    @Schema(description = "更新时间")
+    @Schema(description = "更新时间", type = "string", format = "date-time", example = "2026-05-14T00:00:46")
     private LocalDateTime updateTime;
 }
