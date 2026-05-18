@@ -66,4 +66,12 @@ public interface QuestionService extends IService<Question> {
      * 逻辑删除某题库下的全部试题（供删除题库时级联调用）。
      */
     void removeQuestionsByBankId(Long bankId);
+
+    /**
+     * 查询指定题库下的全部试题，按 sortNo 升序排列（刷题模式专用，不做归属校验）。
+     *
+     * @param bankId 题库 ID
+     * @return 试题列表
+     */
+    List<Question> listByBankId(Long bankId);
 }

@@ -194,6 +194,14 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         questionBankDetailCacheEvictor.evict(bankId);
     }
 
+    @Override
+    public List<Question> listByBankId(Long bankId) {
+        return baseMapper.selectList(new LambdaQueryWrapper<Question>()
+                .eq(Question::getQuestionBankId, bankId)
+                .orderByAsc(Question::getSortNo)
+                .orderByDesc(Question::getUpdateTime));
+    }
+
     /**
      * 按题干 + 题型 + 答案去重，保留首次出现顺序。
      */
