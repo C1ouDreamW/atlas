@@ -51,6 +51,7 @@ build/
 ### cursor ###
 *.cursor
 .deepseek/
+.agents/
 
 
 ### 测试题目文件 ###
