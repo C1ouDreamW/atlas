@@ -1,17 +1,22 @@
 package cn.heycloudream.quiz_backend.controller;
 
 import cn.heycloudream.quiz_backend.common.vo.Result;
+import cn.heycloudream.quiz_backend.config.OpenApiConfig;
 import cn.heycloudream.quiz_backend.config.openapi.ApiDocPublicEndpoint;
 import cn.heycloudream.quiz_backend.config.openapi.ApiDocStandardResponses;
 import cn.heycloudream.quiz_backend.dto.user.UserLoginDTO;
 import cn.heycloudream.quiz_backend.dto.user.UserRegisterDTO;
 import cn.heycloudream.quiz_backend.service.UserService;
+import cn.heycloudream.quiz_backend.util.UserContextHolder;
 import cn.heycloudream.quiz_backend.vo.user.UserLoginVO;
+import cn.heycloudream.quiz_backend.vo.user.UserMeVO;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,13 +35,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @Validated
 @Tag(name = "用户鉴权", description = "用户注册与登录（无需 JWT）")
-@ApiDocPublicEndpoint
 @ApiDocStandardResponses
 public class UserController {
 
     private final UserService userService;
 
     @PostMapping("/register")
+    @ApiDocPublicEndpoint
     @Operation(
             summary = "用户注册",
             description = """
@@ -50,6 +55,7 @@ public class UserController {
     }
 
     @PostMapping("/login")
+    @ApiDocPublicEndpoint
     @Operation(
             summary = "用户登录",
             description = """
@@ -59,5 +65,14 @@ public class UserController {
                     """)
     public Result<UserLoginVO> login(@Valid @RequestBody UserLoginDTO dto) {
         return Result.success(userService.login(dto));
+    }
+
+    @GetMapping("/me")
+    @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
+    @Operation(
+            summary = "获取当前登录用户信息",
+            description = "须 JWT。返回 userId、username、nickname、role，供前端按角色渲染菜单。")
+    public Result<UserMeVO> me() {
+        return Result.success(userService.getCurrentUser(UserContextHolder.get()));
     }
 }

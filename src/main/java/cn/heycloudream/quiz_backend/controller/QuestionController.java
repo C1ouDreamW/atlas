@@ -1,9 +1,11 @@
 package cn.heycloudream.quiz_backend.controller;
 
 import cn.heycloudream.quiz_backend.common.vo.Result;
+import cn.heycloudream.quiz_backend.annotation.RequireRole;
 import cn.heycloudream.quiz_backend.config.OpenApiConfig;
 import cn.heycloudream.quiz_backend.config.openapi.ApiDocStandardResponses;
 import cn.heycloudream.quiz_backend.dto.question.QuestionUpdateDTO;
+import cn.heycloudream.quiz_backend.enums.UserRole;
 import cn.heycloudream.quiz_backend.service.QuestionService;
 import cn.heycloudream.quiz_backend.util.UserContextHolder;
 import cn.heycloudream.quiz_backend.vo.question.QuestionVO;
@@ -34,6 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "试题管理", description = "试题详情、全量更新与逻辑删除（须 JWT + 题库归属）")
 @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 @ApiDocStandardResponses
+@RequireRole(UserRole.PREMIUM)
 public class QuestionController {
 
     private final QuestionService questionService;

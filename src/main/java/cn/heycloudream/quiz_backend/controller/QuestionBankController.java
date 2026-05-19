@@ -3,6 +3,7 @@ package cn.heycloudream.quiz_backend.controller;
 import cn.heycloudream.quiz_backend.common.dto.PageRequestDTO;
 import cn.heycloudream.quiz_backend.common.vo.PageResultVO;
 import cn.heycloudream.quiz_backend.common.vo.Result;
+import cn.heycloudream.quiz_backend.annotation.RequireRole;
 import cn.heycloudream.quiz_backend.config.OpenApiConfig;
 import cn.heycloudream.quiz_backend.config.openapi.ApiDocPublicEndpoint;
 import cn.heycloudream.quiz_backend.config.openapi.ApiDocStandardResponses;
@@ -12,6 +13,7 @@ import cn.heycloudream.quiz_backend.dto.question.QuestionUpdateDTO;
 import cn.heycloudream.quiz_backend.dto.questionbank.QuestionBankCreateDTO;
 import cn.heycloudream.quiz_backend.dto.questionbank.QuestionBankUpdateDTO;
 import cn.heycloudream.quiz_backend.enums.AiImportTaskStatus;
+import cn.heycloudream.quiz_backend.enums.UserRole;
 import cn.heycloudream.quiz_backend.exception.BusinessException;
 import cn.heycloudream.quiz_backend.service.QuestionBankHotDetailService;
 import cn.heycloudream.quiz_backend.service.QuestionBankService;
@@ -72,6 +74,7 @@ public class QuestionBankController {
     private final AiImportTaskMetaStore taskMetaStore;
 
     @GetMapping
+    @RequireRole(UserRole.PREMIUM)
     @Operation(
             summary = "分页查询当前用户的题库列表",
             description = "须 JWT。Query：`current`、`pageSize`（必填）。按更新时间倒序。")
@@ -95,6 +98,7 @@ public class QuestionBankController {
     }
 
     @PostMapping
+    @RequireRole(UserRole.PREMIUM)
     @Operation(
             summary = "创建题库",
             description = "须 JWT。成功 data 为新题库 ID（Long）。失败：code=401。")
@@ -119,6 +123,7 @@ public class QuestionBankController {
     }
 
     @GetMapping("/{bankId}/questions")
+    @RequireRole(UserRole.PREMIUM)
     @Operation(
             summary = "分页查询指定题库下的试题",
             description = """
@@ -134,6 +139,7 @@ public class QuestionBankController {
     }
 
     @PostMapping("/{bankId}/questions")
+    @RequireRole(UserRole.PREMIUM)
     @Operation(
             summary = "在指定题库下新增试题",
             description = """
@@ -151,6 +157,7 @@ public class QuestionBankController {
     }
 
     @PostMapping("/{bankId}/questions/batch")
+    @RequireRole(UserRole.PREMIUM)
     @Operation(
             summary = "批量确认导入 AI 解析题目（幂等）",
             description = """
@@ -181,7 +188,8 @@ public class QuestionBankController {
         try {
             AiImportTaskMetaVO meta = taskMetaStore.read(taskId)
                     .orElseThrow(() -> new BusinessException(400, "任务不存在或已过期"));
-            if (!userId.equals(meta.getUserId()) || !bankId.equals(meta.getBankId())) {
+            if (!bankId.equals(meta.getBankId())
+                    || (!UserContextHolder.isAdmin() && !userId.equals(meta.getUserId()))) {
                 throw new BusinessException(403, "任务与题库不匹配或无权操作");
             }
 
@@ -228,6 +236,7 @@ public class QuestionBankController {
     }
 
     @PutMapping("/{bankId}")
+    @RequireRole(UserRole.PREMIUM)
     @Operation(
             summary = "全量更新题库",
             description = "须 JWT，仅题库所有者。成功 data=null。失败：code=404。")
@@ -241,6 +250,7 @@ public class QuestionBankController {
     }
 
     @DeleteMapping("/{bankId}")
+    @RequireRole(UserRole.PREMIUM)
     @Operation(
             summary = "删除题库",
             description = "须 JWT，逻辑删除题库并级联逻辑删除其下全部试题。失败：code=404。")

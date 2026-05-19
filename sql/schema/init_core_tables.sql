@@ -18,7 +18,7 @@ CREATE TABLE `sys_user` (
   `username`        VARCHAR(64)     NOT NULL COMMENT '登录账号（唯一）',
   `password_hash`   VARCHAR(255)    NOT NULL COMMENT 'BCrypt 密码密文',
   `nickname`        VARCHAR(64)     DEFAULT NULL COMMENT '昵称',
-  `role`            VARCHAR(32)     NOT NULL DEFAULT 'STUDENT' COMMENT '角色权限（扩展管理员/教师端）',
+  `role`            VARCHAR(32)     NOT NULL DEFAULT 'USER' COMMENT '角色权限：USER-普通用户 PREMIUM-高级用户 ADMIN-管理员',
   `create_time`     DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time`     DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `is_deleted`      TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '逻辑删除：0-否 1-是',

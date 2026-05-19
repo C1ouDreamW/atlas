@@ -5,11 +5,11 @@ import cn.heycloudream.quiz_backend.common.vo.PageResultVO;
 import cn.heycloudream.quiz_backend.dto.questionbank.QuestionBankCreateDTO;
 import cn.heycloudream.quiz_backend.dto.questionbank.QuestionBankUpdateDTO;
 import cn.heycloudream.quiz_backend.entity.QuestionBank;
-import cn.heycloudream.quiz_backend.exception.BusinessException;
 import cn.heycloudream.quiz_backend.mapper.QuestionBankMapper;
 import cn.heycloudream.quiz_backend.service.QuestionBankService;
 import cn.heycloudream.quiz_backend.service.QuestionService;
 import cn.heycloudream.quiz_backend.service.cache.QuestionBankDetailCacheEvictor;
+import cn.heycloudream.quiz_backend.service.guard.BankAccessGuard;
 import cn.heycloudream.quiz_backend.vo.questionbank.QuestionBankVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -33,6 +33,7 @@ public class QuestionBankServiceImpl implements QuestionBankService {
     private final QuestionBankMapper questionBankMapper;
     private final QuestionService questionService;
     private final QuestionBankDetailCacheEvictor questionBankDetailCacheEvictor;
+    private final BankAccessGuard bankAccessGuard;
 
     @Override
     public PageResultVO<QuestionBankVO> pageMyBanks(Long currentUserId, PageRequestDTO page) {
@@ -86,7 +87,7 @@ public class QuestionBankServiceImpl implements QuestionBankService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateBank(Long currentUserId, Long bankId, QuestionBankUpdateDTO dto) {
-        QuestionBank bank = requireOwnedBank(currentUserId, bankId);
+        QuestionBank bank = bankAccessGuard.requireOwnedBank(currentUserId, bankId);
         bank.setTitle(dto.getTitle().trim());
         bank.setDescription(dto.getDescription() == null ? null : dto.getDescription().trim());
         bank.setIsPublic(dto.getIsPublic());
@@ -98,18 +99,10 @@ public class QuestionBankServiceImpl implements QuestionBankService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteBank(Long currentUserId, Long bankId) {
-        requireOwnedBank(currentUserId, bankId);
+        bankAccessGuard.requireOwnedBank(currentUserId, bankId);
         questionService.removeQuestionsByBankId(bankId);
         questionBankMapper.deleteById(bankId);
         questionBankDetailCacheEvictor.evict(bankId);
-    }
-
-    private QuestionBank requireOwnedBank(Long currentUserId, Long bankId) {
-        QuestionBank bank = questionBankMapper.selectById(bankId);
-        if (bank == null || bank.getUserId() == null || !bank.getUserId().equals(currentUserId)) {
-            throw new BusinessException(404, "题库不存在或无权访问");
-        }
-        return bank;
     }
 
     private QuestionBankVO toVo(QuestionBank e) {

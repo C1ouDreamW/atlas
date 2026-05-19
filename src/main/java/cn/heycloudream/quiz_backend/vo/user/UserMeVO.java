@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 用户登录响应 VO。
+ * 当前登录用户信息 VO。
  *
  * @author C1ouD
  */
@@ -15,11 +15,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "用户登录响应")
-public class UserLoginVO {
-
-    @Schema(description = "JWT 访问令牌", example = "eyJhbGciOiJIUzI1NiJ9...")
-    private String token;
+@Schema(description = "当前登录用户信息")
+public class UserMeVO {
 
     @Schema(description = "用户 ID", example = "1")
     private Long userId;

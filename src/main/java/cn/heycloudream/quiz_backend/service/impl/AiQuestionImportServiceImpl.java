@@ -1,15 +1,14 @@
 package cn.heycloudream.quiz_backend.service.impl;
 
 import cn.heycloudream.quiz_backend.common.constants.ValidationConstants;
-import cn.heycloudream.quiz_backend.entity.QuestionBank;
 import cn.heycloudream.quiz_backend.enums.AiImportTaskStatus;
 import cn.heycloudream.quiz_backend.exception.BusinessException;
-import cn.heycloudream.quiz_backend.mapper.QuestionBankMapper;
 import cn.heycloudream.quiz_backend.service.AiQuestionImportService;
 import cn.heycloudream.quiz_backend.service.ai.AiImportTaskMetaStore;
 import cn.heycloudream.quiz_backend.service.ai.AiImportTaskStatusStore;
 import cn.heycloudream.quiz_backend.service.ai.RedisStreamTaskDispatcher;
 import cn.heycloudream.quiz_backend.service.file.FileStorageService;
+import cn.heycloudream.quiz_backend.service.guard.BankAccessGuard;
 import cn.heycloudream.quiz_backend.util.TaskIdGenerator;
 import cn.heycloudream.quiz_backend.vo.ai.AiImportSubmitVO;
 import cn.heycloudream.quiz_backend.vo.ai.AiImportTaskMetaVO;
@@ -38,11 +37,11 @@ public class AiQuestionImportServiceImpl implements AiQuestionImportService {
 
     private static final Set<String> ALLOWED_IMPORT_EXTENSIONS = Set.of("txt", "pdf", "docx");
 
-    private final QuestionBankMapper questionBankMapper;
     private final FileStorageService fileStorageService;
     private final RedisStreamTaskDispatcher taskDispatcher;
     private final AiImportTaskStatusStore taskStatusStore;
     private final AiImportTaskMetaStore taskMetaStore;
+    private final BankAccessGuard bankAccessGuard;
 
     @Override
     public AiImportSubmitVO submitFileImport(Long currentUserId, Long bankId, MultipartFile file) {
@@ -59,7 +58,7 @@ public class AiQuestionImportServiceImpl implements AiQuestionImportService {
             throw new BusinessException(400, "文件过大，最大支持 10 MB");
         }
         validateImportFilename(file.getOriginalFilename());
-        requireOwnedBank(currentUserId, bankId);
+        bankAccessGuard.requireOwnedBank(currentUserId, bankId);
 
         String fileUrl;
         try {
@@ -94,13 +93,6 @@ public class AiQuestionImportServiceImpl implements AiQuestionImportService {
                 .taskId(taskId)
                 .status(AiImportTaskStatus.SUBMITTED.name())
                 .build();
-    }
-
-    private void requireOwnedBank(Long currentUserId, Long bankId) {
-        QuestionBank bank = questionBankMapper.selectById(bankId);
-        if (bank == null || bank.getUserId() == null || !bank.getUserId().equals(currentUserId)) {
-            throw new BusinessException(404, "题库不存在或无权访问");
-        }
     }
 
     private static void validateImportFilename(String filename) {

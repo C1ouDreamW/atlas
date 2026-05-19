@@ -9,6 +9,8 @@ import cn.heycloudream.quiz_backend.service.PracticeService;
 import cn.heycloudream.quiz_backend.service.QuestionBankHotDetailService;
 import cn.heycloudream.quiz_backend.service.QuestionService;
 import cn.heycloudream.quiz_backend.service.WrongQuestionService;
+import cn.heycloudream.quiz_backend.service.guard.BankAccessGuard;
+import cn.heycloudream.quiz_backend.util.UserContextHolder;
 import cn.heycloudream.quiz_backend.vo.practice.AnswerSubmitResultVO;
 import cn.heycloudream.quiz_backend.vo.practice.PracticeQuestionVO;
 import cn.heycloudream.quiz_backend.vo.question.QuestionVO;
@@ -43,6 +45,7 @@ public class PracticeServiceImpl implements PracticeService {
     private final QuestionBankMapper questionBankMapper;
     private final QuestionService questionService;
     private final WrongQuestionService wrongQuestionService;
+    private final BankAccessGuard bankAccessGuard;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -58,7 +61,7 @@ public class PracticeServiceImpl implements PracticeService {
                     .collect(Collectors.toList());
         } else {
             // 私有题库：归属校验 + 查 DB（通过 QuestionService.listByBankId）
-            requireOwnedBank(userId, bank);
+            bankAccessGuard.requirePrivatePracticeAccess(userId, UserContextHolder.getRole(), bank);
             questions = questionService.listByBankId(bankId).stream()
                     .map(this::entityToPracticeVO)
                     .collect(Collectors.toList());
@@ -86,7 +89,7 @@ public class PracticeServiceImpl implements PracticeService {
         // 校验访问权限：公开题库无需归属校验；私有题库需要
         QuestionBank bank = requireExistsBank(bankId);
         if (!isPublic(bank)) {
-            requireOwnedBank(userId, bank);
+            bankAccessGuard.requirePrivatePracticeAccess(userId, UserContextHolder.getRole(), bank);
         }
 
         // 判分
@@ -179,12 +182,6 @@ public class PracticeServiceImpl implements PracticeService {
             throw new BusinessException(404, "题库不存在");
         }
         return bank;
-    }
-
-    private void requireOwnedBank(Long userId, QuestionBank bank) {
-        if (userId == null || !userId.equals(bank.getUserId())) {
-            throw new BusinessException(403, "无权访问该题库");
-        }
     }
 
     private boolean isPublic(QuestionBank bank) {

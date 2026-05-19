@@ -4,12 +4,11 @@ import cn.heycloudream.quiz_backend.common.vo.PageResultVO;
 import cn.heycloudream.quiz_backend.dto.question.QuestionInBankPageQueryDTO;
 import cn.heycloudream.quiz_backend.dto.question.QuestionUpdateDTO;
 import cn.heycloudream.quiz_backend.entity.Question;
-import cn.heycloudream.quiz_backend.entity.QuestionBank;
 import cn.heycloudream.quiz_backend.exception.BusinessException;
-import cn.heycloudream.quiz_backend.mapper.QuestionBankMapper;
 import cn.heycloudream.quiz_backend.mapper.QuestionMapper;
 import cn.heycloudream.quiz_backend.service.QuestionService;
 import cn.heycloudream.quiz_backend.service.cache.QuestionBankDetailCacheEvictor;
+import cn.heycloudream.quiz_backend.service.guard.BankAccessGuard;
 import cn.heycloudream.quiz_backend.vo.ai.QuestionPreviewVO;
 import cn.heycloudream.quiz_backend.vo.question.QuestionVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -39,18 +38,18 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
     private static final int SAVE_BATCH_SIZE = 500;
 
-    private final QuestionBankMapper questionBankMapper;
     private final QuestionBankDetailCacheEvictor questionBankDetailCacheEvictor;
+    private final BankAccessGuard bankAccessGuard;
     private final ObjectMapper objectMapper;
 
     public QuestionServiceImpl(
             QuestionMapper questionMapper,
-            QuestionBankMapper questionBankMapper,
             QuestionBankDetailCacheEvictor questionBankDetailCacheEvictor,
+            BankAccessGuard bankAccessGuard,
             ObjectMapper objectMapper) {
         this.baseMapper = questionMapper;
-        this.questionBankMapper = questionBankMapper;
         this.questionBankDetailCacheEvictor = questionBankDetailCacheEvictor;
+        this.bankAccessGuard = bankAccessGuard;
         this.objectMapper = objectMapper;
     }
 
@@ -71,7 +70,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void batchImportPreview(Long currentUserId, Long bankId, List<QuestionPreviewVO> previews) {
-        requireOwnedBank(currentUserId, bankId);
+        bankAccessGuard.requireOwnedBank(currentUserId, bankId);
         if (previews == null || previews.isEmpty()) {
             return;
         }
@@ -108,7 +107,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
     @Override
     public PageResultVO<QuestionVO> pageQuestionsInBank(Long currentUserId, Long bankId, QuestionInBankPageQueryDTO query) {
-        requireOwnedBank(currentUserId, bankId);
+        bankAccessGuard.requireOwnedBank(currentUserId, bankId);
         Page<Question> mp = new Page<>(query.getCurrent(), query.getPageSize());
         LambdaQueryWrapper<Question> w = new LambdaQueryWrapper<Question>()
                 .eq(Question::getQuestionBankId, bankId)
@@ -128,14 +127,14 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         if (q == null) {
             throw new BusinessException(404, "试题不存在或无权访问");
         }
-        requireOwnedBank(currentUserId, q.getQuestionBankId());
+        bankAccessGuard.requireOwnedBank(currentUserId, q.getQuestionBankId());
         return toVo(q);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long createQuestionInBank(Long currentUserId, Long bankId, QuestionUpdateDTO body) {
-        requireOwnedBank(currentUserId, bankId);
+        bankAccessGuard.requireOwnedBank(currentUserId, bankId);
         LocalDateTime now = LocalDateTime.now();
         Question entity = Question.builder()
                 .questionBankId(bankId)
@@ -162,7 +161,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         if (q == null) {
             throw new BusinessException(404, "试题不存在或无权访问");
         }
-        requireOwnedBank(currentUserId, q.getQuestionBankId());
+        bankAccessGuard.requireOwnedBank(currentUserId, q.getQuestionBankId());
         q.setQuestionType(dto.getQuestionType().trim());
         q.setStem(dto.getStem().trim());
         q.setOptionsJson(dto.getOptionsJson());
@@ -182,7 +181,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             throw new BusinessException(404, "试题不存在或无权访问");
         }
         Long bankId = q.getQuestionBankId();
-        requireOwnedBank(currentUserId, bankId);
+        bankAccessGuard.requireOwnedBank(currentUserId, bankId);
         baseMapper.deleteById(questionId);
         questionBankDetailCacheEvictor.evict(bankId);
     }
@@ -237,13 +236,6 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             return 1;
         }
         return max.getSortNo() + 1;
-    }
-
-    private void requireOwnedBank(Long currentUserId, Long bankId) {
-        QuestionBank bank = questionBankMapper.selectById(bankId);
-        if (bank == null || bank.getUserId() == null || !bank.getUserId().equals(currentUserId)) {
-            throw new BusinessException(404, "题库不存在或无权访问");
-        }
     }
 
     private QuestionVO toVo(Question e) {

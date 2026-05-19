@@ -1,14 +1,19 @@
 package cn.heycloudream.quiz_backend.controller;
 
 import cn.heycloudream.quiz_backend.common.vo.Result;
+import cn.heycloudream.quiz_backend.annotation.RequireRole;
 import cn.heycloudream.quiz_backend.config.OpenApiConfig;
 import cn.heycloudream.quiz_backend.config.openapi.ApiDocStandardResponses;
+import cn.heycloudream.quiz_backend.enums.UserRole;
+import cn.heycloudream.quiz_backend.exception.BusinessException;
 import cn.heycloudream.quiz_backend.service.AiQuestionImportService;
 import cn.heycloudream.quiz_backend.service.ai.AiImportRateLimiter;
 import cn.heycloudream.quiz_backend.service.ai.AiImportResultStore;
+import cn.heycloudream.quiz_backend.service.ai.AiImportTaskMetaStore;
 import cn.heycloudream.quiz_backend.service.ai.AiImportTaskStatusStore;
 import cn.heycloudream.quiz_backend.util.UserContextHolder;
 import cn.heycloudream.quiz_backend.vo.ai.AiImportSubmitVO;
+import cn.heycloudream.quiz_backend.vo.ai.AiImportTaskMetaVO;
 import cn.heycloudream.quiz_backend.vo.ai.AiImportTaskStatusVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -42,11 +47,13 @@ import org.springframework.web.multipart.MultipartFile;
 @Tag(name = "AI 智能导入", description = "文件上传 → Stream 派发 → 状态轮询 → 预览确认入库（须 JWT）")
 @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 @ApiDocStandardResponses
+@RequireRole(UserRole.PREMIUM)
 public class AiImportController {
 
     private final AiQuestionImportService aiQuestionImportService;
     private final AiImportTaskStatusStore statusStore;
     private final AiImportResultStore resultStore;
+    private final AiImportTaskMetaStore metaStore;
     private final AiImportRateLimiter rateLimiter;
 
     @PostMapping(value = "/submit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -87,13 +94,22 @@ public class AiImportController {
 
                     - **PARSED**：data.questions 为预览列表（QuestionPreviewVO，options/answer 为数组）
                     - **任务不存在或已过期**：code=200 且 **data=null**（非 HTTP 404）
-                    - 当前实现不校验 task 归属，请勿泄露 taskId
+                    - 仅任务提交者或 ADMIN 可读取任务状态与预览结果
 
                     建议前端 2~5 秒轮询，终态为 IMPORTED 或 FAILED 后停止。
                     """)
     public Result<AiImportTaskStatusVO> getTaskStatus(
             @Parameter(description = "提交接口返回的任务 ID（UUID）", required = true)
             @PathVariable("taskId") String taskId) {
+        Long userId = UserContextHolder.get();
+        AiImportTaskMetaVO meta = metaStore.read(taskId).orElse(null);
+        if (meta == null) {
+            return Result.success(null);
+        }
+        if (!UserContextHolder.isAdmin() && !userId.equals(meta.getUserId())) {
+            throw new BusinessException(403, "无权访问该任务");
+        }
+
         AiImportTaskStatusVO vo = statusStore.read(taskId).orElse(null);
         if (vo == null) {
             return Result.success(null);

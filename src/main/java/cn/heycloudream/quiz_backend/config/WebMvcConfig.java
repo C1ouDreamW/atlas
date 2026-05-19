@@ -15,10 +15,27 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebMvcConfig implements WebMvcConfigurer {
 
     private final JwtAuthInterceptor jwtAuthInterceptor;
+    private final RoleAuthInterceptor roleAuthInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtAuthInterceptor)
+                .addPathPatterns("/api/**")
+                .excludePathPatterns(
+                        // 用户注册与登录
+                        "/api/v1/users/register",
+                        "/api/v1/users/login",
+                        // 题库大厅（公开题库分页列表，无需登录）
+                        "/api/v1/question-banks/public",
+                        // 公开热点题库详情（无需登录）
+                        "/api/v1/question-banks/*/hot-practice-detail",
+                        // Swagger / OpenAPI 文档
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/v3/api-docs/**"
+                );
+
+        registry.addInterceptor(roleAuthInterceptor)
                 .addPathPatterns("/api/**")
                 .excludePathPatterns(
                         // 用户注册与登录

@@ -45,7 +45,7 @@ public class SysUser {
     private String nickname;
 
     /**
-     * 角色权限（如 STUDENT；可扩展管理员/教师端）。
+     * 角色权限：USER / PREMIUM / ADMIN。
      */
     private String role;
 

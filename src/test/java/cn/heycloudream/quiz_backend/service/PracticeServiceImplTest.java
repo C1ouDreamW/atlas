@@ -5,6 +5,7 @@ import cn.heycloudream.quiz_backend.entity.Question;
 import cn.heycloudream.quiz_backend.entity.QuestionBank;
 import cn.heycloudream.quiz_backend.exception.BusinessException;
 import cn.heycloudream.quiz_backend.mapper.QuestionBankMapper;
+import cn.heycloudream.quiz_backend.service.guard.BankAccessGuard;
 import cn.heycloudream.quiz_backend.service.impl.PracticeServiceImpl;
 import cn.heycloudream.quiz_backend.vo.practice.AnswerSubmitResultVO;
 import cn.heycloudream.quiz_backend.vo.practice.PracticeQuestionVO;
@@ -26,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -47,6 +49,9 @@ class PracticeServiceImplTest {
 
     @Mock
     private WrongQuestionService wrongQuestionService;
+
+    @Mock
+    private BankAccessGuard bankAccessGuard;
 
     @Spy
     private ObjectMapper objectMapper;
@@ -123,6 +128,8 @@ class PracticeServiceImplTest {
     @DisplayName("listPracticeQuestions: 私有题库非所有者 → 抛 403")
     void listPracticeQuestions_privateBank_notOwner_shouldThrow403() {
         when(questionBankMapper.selectById(BANK_ID)).thenReturn(privateBank());
+        doThrow(new BusinessException(403, "无权访问该题库"))
+                .when(bankAccessGuard).requirePrivatePracticeAccess(anyLong(), any(), any());
 
         assertThatThrownBy(() -> practiceService.listPracticeQuestions(999L, BANK_ID, false))
                 .isInstanceOf(BusinessException.class)
