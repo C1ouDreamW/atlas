@@ -1,5 +1,6 @@
 package cn.heycloudream.quiz_backend.vo.wrong;
 
+import cn.heycloudream.quiz_backend.enums.QuestionType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,7 +30,7 @@ public class WrongQuestionVO {
     @Schema(description = "所属题库 ID", example = "1001")
     private Long questionBankId;
 
-    @Schema(description = "题型编码（SINGLE / MULTI / JUDGE）", example = "SINGLE")
+    @Schema(description = "题型", implementation = QuestionType.class, example = "SINGLE")
     private String questionType;
 
     @Schema(description = "题干纯文本")

@@ -1,6 +1,7 @@
 package cn.heycloudream.quiz_backend.dto.ai;
 
 import cn.heycloudream.quiz_backend.vo.ai.QuestionPreviewVO;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -24,6 +25,8 @@ public class BatchImportRequestDTO {
 
     @NotEmpty(message = "导入题目列表不能为空")
     @Valid
-    @Schema(description = "经用户确认/编辑后的题目列表")
+    @ArraySchema(
+            arraySchema = @Schema(description = "经用户确认/编辑后的题目列表（与预览 QuestionPreviewVO 结构一致）"),
+            schema = @Schema(implementation = QuestionPreviewVO.class))
     private List<QuestionPreviewVO> questions;
 }

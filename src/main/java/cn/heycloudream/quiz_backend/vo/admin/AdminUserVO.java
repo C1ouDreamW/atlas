@@ -29,7 +29,7 @@ public class AdminUserVO {
     @Schema(description = "昵称", example = "张三")
     private String nickname;
 
-    @Schema(description = "用户角色", example = "USER")
+    @Schema(description = "用户角色：USER-普通用户，PREMIUM-高级用户，ADMIN-管理员", example = "USER")
     private String role;
 
     @Schema(description = "创建时间")

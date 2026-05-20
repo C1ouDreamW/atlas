@@ -1,6 +1,7 @@
 package cn.heycloudream.quiz_backend.dto.question;
 
 import cn.heycloudream.quiz_backend.common.constants.ValidationConstants;
+import cn.heycloudream.quiz_backend.enums.QuestionType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -29,7 +30,7 @@ public class QuestionCreateDTO {
 
     @NotBlank(message = "题型不能为空")
     @Size(max = ValidationConstants.QUESTION_TYPE_MAX, message = "题型标识过长")
-    @Schema(description = "题型编码，如 SINGLE、MULTI、JUDGE", example = "SINGLE", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "题型", implementation = QuestionType.class, example = "SINGLE", requiredMode = Schema.RequiredMode.REQUIRED)
     private String questionType;
 
     @NotBlank(message = "题干不能为空")

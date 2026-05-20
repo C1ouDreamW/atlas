@@ -33,7 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/questions")
 @RequiredArgsConstructor
 @Validated
-@Tag(name = "试题管理", description = "试题详情、全量更新与逻辑删除（须 JWT + 题库归属）")
+@Tag(name = "试题管理", description = "须 JWT，最低角色 PREMIUM（ADMIN 可 bypass 归属）；USER 调用返回 code=403")
 @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 @ApiDocStandardResponses
 @RequireRole(UserRole.PREMIUM)
@@ -44,7 +44,10 @@ public class QuestionController {
     @GetMapping("/{id}")
     @Operation(
             summary = "根据试题 ID 获取详情",
-            description = "仅所属题库所有者可查看。失败：code=404 试题不存在或无权访问。")
+            description = """
+                    须 JWT，最低角色 PREMIUM；仅所属题库所有者可查看（ADMIN 可 bypass）。
+                    失败：code=403 角色为 USER；code=404 试题不存在或无权访问。
+                    """)
     public Result<QuestionVO> getById(
             @Parameter(description = "试题主键", required = true, example = "50001")
             @PathVariable("id") Long id) {
@@ -56,9 +59,9 @@ public class QuestionController {
     @Operation(
             summary = "全量更新试题",
             description = """
-                    不可更换所属题库；仅所属题库所有者可更新。
+                    须 JWT，最低角色 PREMIUM。不可更换所属题库；仅所属题库所有者可更新（ADMIN 可 bypass）。
                     请求体见 QuestionUpdateDTO（optionsJson/answerJson 为 JSON 数组字符串）。
-                    失败：code=404。
+                    失败：code=403 角色为 USER；code=404 试题不存在或无权。
                     """)
     public Result<Void> update(
             @Parameter(description = "试题主键", required = true, example = "50001")
@@ -72,7 +75,10 @@ public class QuestionController {
     @DeleteMapping("/{id}")
     @Operation(
             summary = "删除试题",
-            description = "逻辑删除；仅所属题库所有者可删除。失败：code=404。")
+            description = """
+                    须 JWT，最低角色 PREMIUM。逻辑删除；仅所属题库所有者可删除（ADMIN 可 bypass）。
+                    失败：code=403 角色为 USER；code=404 试题不存在或无权。
+                    """)
     public Result<Void> delete(
             @Parameter(description = "试题主键", required = true, example = "50001")
             @PathVariable("id") Long id) {

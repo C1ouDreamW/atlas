@@ -59,7 +59,7 @@ import java.util.List;
 @RequestMapping("/api/v1/question-banks")
 @RequiredArgsConstructor
 @Validated
-@Tag(name = "题库管理", description = "题库 CRUD、公开大厅、热点刷题聚合、题库下试题与 AI 批量入库")
+@Tag(name = "题库管理", description = "公开大厅/热点详情无需登录；写操作与「我的题库」须 JWT 且最低 PREMIUM（ADMIN 含）；批量入库见 batch 接口")
 @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 @ApiDocStandardResponses
 public class QuestionBankController {
@@ -77,7 +77,10 @@ public class QuestionBankController {
     @RequireRole(UserRole.PREMIUM)
     @Operation(
             summary = "分页查询当前用户的题库列表",
-            description = "须 JWT。Query：`current`、`pageSize`（必填）。按更新时间倒序。")
+            description = """
+                    须 JWT，最低角色 PREMIUM（ADMIN 可）。Query：`current`、`pageSize`（必填）。仅返回当前用户创建的题库，按更新时间倒序。
+                    失败：code=401 未登录；code=403 角色为 USER。
+                    """)
     public Result<PageResultVO<QuestionBankVO>> pageMyBanks(
             @ParameterObject @Valid @ModelAttribute PageRequestDTO page) {
         Long userId = UserContextHolder.get();
@@ -101,7 +104,10 @@ public class QuestionBankController {
     @RequireRole(UserRole.PREMIUM)
     @Operation(
             summary = "创建题库",
-            description = "须 JWT。成功 data 为新题库 ID（Long）。失败：code=401。")
+            description = """
+                    须 JWT，最低角色 PREMIUM（ADMIN 可）。成功 data 为新题库 ID（Long）。
+                    失败：code=401 未登录；code=403 角色为 USER。
+                    """)
     public Result<Long> createBank(@Valid @RequestBody QuestionBankCreateDTO dto) {
         Long userId = UserContextHolder.get();
         Long id = questionBankService.createBank(userId, dto);
@@ -127,8 +133,8 @@ public class QuestionBankController {
     @Operation(
             summary = "分页查询指定题库下的试题",
             description = """
-                    须 JWT 且为题库所有者。Query：`current`、`pageSize`（必填），`keyword`（可选，题干模糊）。
-                    失败：code=404 题库不存在或无权。
+                    须 JWT，最低角色 PREMIUM（ADMIN 可 bypass 归属）。须为题库所有者。Query：`current`、`pageSize`（必填），`keyword`（可选，题干模糊）。
+                    失败：code=403 角色为 USER；code=404 题库不存在或无权。
                     """)
     public Result<PageResultVO<QuestionVO>> pageQuestionsInBank(
             @Parameter(description = "题库 ID", required = true, example = "1001")
@@ -143,9 +149,9 @@ public class QuestionBankController {
     @Operation(
             summary = "在指定题库下新增试题",
             description = """
-                    须 JWT。请求体为 QuestionUpdateDTO（含 optionsJson、answerJson 等 JSON 字符串字段），
+                    须 JWT，最低角色 PREMIUM（ADMIN 可 bypass 归属）。请求体为 QuestionUpdateDTO（含 optionsJson、answerJson 等 JSON 字符串字段），
                     **勿传 questionBankId**，题库以路径 bankId 为准。
-                    成功 data 为新试题 ID。失败：code=404。
+                    成功 data 为新试题 ID。失败：code=403 角色为 USER；code=404 题库不存在或无权。
                     """)
     public Result<Long> createQuestionInBank(
             @Parameter(description = "题库 ID", required = true, example = "1001")
@@ -161,12 +167,13 @@ public class QuestionBankController {
     @Operation(
             summary = "批量确认导入 AI 解析题目（幂等）",
             description = """
-                    须 JWT。前端在 status=PARSED 预览确认后提交 BatchImportRequestDTO。
+                    须 JWT，最低角色 PREMIUM（ADMIN 可 bypass 归属或任务 meta 校验）。前端在 status=PARSED 预览确认后提交 BatchImportRequestDTO。
                     questions 使用 QuestionPreviewVO（options/answer 为数组，与预览接口一致）。
 
                     - 同一 taskId **仅落库一次**：已导入再次提交 code=200、data=null
                     - 并发落库中：code=409「该任务正在导入中」
-                    - taskId 无效/过期：code=400；task 与 bankId/用户不匹配：code=403
+                    - taskId 无效/过期：code=400
+                    - 角色为 USER：code=403；task 与 bankId/用户不匹配：code=403
                     """)
     public Result<Void> batchImportQuestions(
             @Parameter(description = "题库 ID", required = true, example = "1001")
@@ -239,7 +246,10 @@ public class QuestionBankController {
     @RequireRole(UserRole.PREMIUM)
     @Operation(
             summary = "全量更新题库",
-            description = "须 JWT，仅题库所有者。成功 data=null。失败：code=404。")
+            description = """
+                    须 JWT，最低角色 PREMIUM（ADMIN 可 bypass 归属），仅题库所有者可改。成功 data=null。
+                    失败：code=403 角色为 USER；code=404 题库不存在或无权。
+                    """)
     public Result<Void> updateBank(
             @Parameter(description = "题库 ID", required = true, example = "1001")
             @PathVariable("bankId") Long bankId,
@@ -253,7 +263,10 @@ public class QuestionBankController {
     @RequireRole(UserRole.PREMIUM)
     @Operation(
             summary = "删除题库",
-            description = "须 JWT，逻辑删除题库并级联逻辑删除其下全部试题。失败：code=404。")
+            description = """
+                    须 JWT，最低角色 PREMIUM（ADMIN 可 bypass 归属），逻辑删除题库并级联逻辑删除其下全部试题。
+                    失败：code=403 角色为 USER；code=404 题库不存在或无权。
+                    """)
     public Result<Void> deleteBank(
             @Parameter(description = "题库 ID", required = true, example = "1001")
             @PathVariable("bankId") Long bankId) {

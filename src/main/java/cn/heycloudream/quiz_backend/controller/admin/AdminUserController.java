@@ -36,7 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/admin/users")
 @RequiredArgsConstructor
 @Validated
-@Tag(name = "管理端用户管理", description = "管理员查询用户与升降级 USER/PREMIUM")
+@Tag(name = "管理端用户管理", description = "须 JWT，仅 ADMIN 可访问；USER/PREMIUM 调用返回 code=403")
 @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 @ApiDocStandardResponses
 @RequireRole(UserRole.ADMIN)
@@ -47,7 +47,10 @@ public class AdminUserController {
     @GetMapping
     @Operation(
             summary = "管理端分页查询用户",
-            description = "仅 ADMIN。支持按 username 模糊查询、按 role 精确筛选。")
+            description = """
+                    须 JWT，仅 ADMIN。支持按 username 模糊查询、按 role（USER/PREMIUM/ADMIN）精确筛选。
+                    失败：code=401 未登录；code=403 非管理员。
+                    """)
     public Result<PageResultVO<AdminUserVO>> pageUsers(
             @ParameterObject @Valid @ModelAttribute AdminUserPageQueryDTO query) {
         return Result.success(userService.pageAdminUsers(query));
@@ -56,7 +59,10 @@ public class AdminUserController {
     @PutMapping("/{userId}/role")
     @Operation(
             summary = "管理端变更用户角色",
-            description = "仅 ADMIN。目标角色只允许 USER 或 PREMIUM；禁止设置 ADMIN，禁止修改已有 ADMIN。")
+            description = """
+                    须 JWT，仅 ADMIN。目标角色只允许 USER 或 PREMIUM；禁止设置 ADMIN，禁止修改已有 ADMIN。
+                    失败：code=401 未登录；code=403 非管理员或违反角色变更规则。
+                    """)
     public Result<Void> updateRole(
             @Parameter(description = "目标用户 ID", required = true, example = "2")
             @PathVariable("userId") Long userId,

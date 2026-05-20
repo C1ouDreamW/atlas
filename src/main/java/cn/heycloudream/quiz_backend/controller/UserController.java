@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
 @Validated
-@Tag(name = "用户鉴权", description = "用户注册与登录（无需 JWT）")
+@Tag(name = "用户鉴权", description = "注册与登录无需 JWT；`GET /me` 须 JWT，最低角色 USER")
 @ApiDocStandardResponses
 public class UserController {
 
@@ -45,7 +45,7 @@ public class UserController {
     @Operation(
             summary = "用户注册",
             description = """
-                    **无需登录。** 使用 BCrypt 加密存储密码。
+                    **无需登录。** 使用 BCrypt 加密存储密码；服务端固定角色为 `USER`，忽略请求体中的 `role` 字段。
                     成功：code=200，data 为 null。
                     失败：code=409 用户名已存在（含已逻辑删除账号）。
                     """)
@@ -59,7 +59,7 @@ public class UserController {
     @Operation(
             summary = "用户登录",
             description = """
-                    **无需登录。** 校验账号密码，成功返回 JWT 与用户信息。
+                    **无需登录。** 校验账号密码，成功返回 JWT 与用户信息（含 `role`：`USER` / `PREMIUM` / `ADMIN`）。
                     失败：code=401 账号或密码错误。
                     后续请求 Header：`Authorization: Bearer <token>`。
                     """)
@@ -71,7 +71,10 @@ public class UserController {
     @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
     @Operation(
             summary = "获取当前登录用户信息",
-            description = "须 JWT。返回 userId、username、nickname、role，供前端按角色渲染菜单。")
+            description = """
+                    须 JWT，最低角色 USER。返回 userId、username、nickname、role，供前端按角色渲染菜单。
+                    失败：code=401 未登录或 Token 无效。
+                    """)
     public Result<UserMeVO> me() {
         return Result.success(userService.getCurrentUser(UserContextHolder.get()));
     }

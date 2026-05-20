@@ -1,5 +1,6 @@
 package cn.heycloudream.quiz_backend.vo.ai;
 
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -37,6 +38,8 @@ public class AiImportTaskStatusVO {
     @Schema(description = "解析出的题目总数（PARSED 态及之后有意义）")
     private Integer totalCount;
 
-    @Schema(description = "预览题目列表（status=PARSED 时由轮询接口填充；结构为 QuestionPreviewVO）")
+    @ArraySchema(
+            arraySchema = @Schema(description = "预览题目列表（status=PARSED 时由轮询接口填充）"),
+            schema = @Schema(implementation = QuestionPreviewVO.class))
     private List<QuestionPreviewVO> questions;
 }

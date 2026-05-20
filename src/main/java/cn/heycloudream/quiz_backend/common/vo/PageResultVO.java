@@ -18,7 +18,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "通用分页响应")
+@Schema(description = "通用分页响应（total + records）。单条类型见各接口 200 响应中 data.records 的 items")
 public class PageResultVO<T> {
 
     /**

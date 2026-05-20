@@ -1,6 +1,7 @@
 package cn.heycloudream.quiz_backend.vo.questionbank;
 
 import cn.heycloudream.quiz_backend.vo.question.QuestionVO;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,6 +25,8 @@ public class QuestionBankDetailBundleVO {
     @Schema(description = "题库基本信息")
     private QuestionBankVO bank;
 
-    @Schema(description = "该题库下全部试题（有序）")
+    @ArraySchema(
+            arraySchema = @Schema(description = "该题库下全部试题（按 sortNo 有序；含答案与解析）"),
+            schema = @Schema(implementation = QuestionVO.class))
     private List<QuestionVO> questions;
 }

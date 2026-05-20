@@ -1,5 +1,6 @@
 package cn.heycloudream.quiz_backend.dto.practice;
 
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -22,9 +23,10 @@ import java.util.List;
 public class AnswerSubmitDTO {
 
     @NotNull(message = "用户答案不能为空")
-    @Schema(
-            description = "用户选择的答案列表。单选/多选传大写字母如 [\"A\"]、[\"A\",\"C\"]；判断题传 [\"T\"] 或 [\"F\"]",
-            example = "[\"A\"]",
-            requiredMode = Schema.RequiredMode.REQUIRED)
+    @ArraySchema(
+            arraySchema = @Schema(
+                    description = "用户选择的答案列表。单选/多选传大写字母；判断题传 T/F",
+                    requiredMode = Schema.RequiredMode.REQUIRED),
+            schema = @Schema(type = "string", example = "A", description = "选项字母或 T/F"))
     private List<String> userAnswer;
 }

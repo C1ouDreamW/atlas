@@ -38,7 +38,7 @@ import java.util.List;
 @RequestMapping("/api/v1/wrong-questions")
 @RequiredArgsConstructor
 @Validated
-@Tag(name = "错题本", description = "查看当前用户错题本、移除错题记录、按错题本重刷")
+@Tag(name = "错题本", description = "须 JWT，最低角色 USER；仅操作当前登录用户本人的错题记录")
 @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 @ApiDocStandardResponses
 public class WrongQuestionController {
@@ -49,7 +49,7 @@ public class WrongQuestionController {
     @Operation(
             summary = "分页查询当前用户的错题本",
             description = """
-                    须 JWT。分页返回当前用户的错题记录，包含题目摘要（不含答案）。
+                    须 JWT，最低角色 USER。分页返回当前用户的错题记录，包含题目摘要（不含答案）。
                     - 可选参数 `bankId`：按题库过滤，不传则返回全部错题。
                     - 按最近做错时间倒序排列。
                     返回 `PageResultVO<WrongQuestionVO>`，`total` 为总条数。
@@ -64,7 +64,7 @@ public class WrongQuestionController {
     @Operation(
             summary = "从错题本移除一条记录",
             description = """
-                    须 JWT，且只能操作本人的错题记录（防止越权）。
+                    须 JWT，最低角色 USER，且只能操作本人的错题记录（防止越权）。
                     执行逻辑删除（is_deleted=1），再次做错该题时会自动复活。
                     失败：code=404 记录不存在，code=403 无权操作他人记录。
                     """)
@@ -80,7 +80,7 @@ public class WrongQuestionController {
     @Operation(
             summary = "按错题本重刷（获取错题刷题列表）",
             description = """
-                    须 JWT。返回当前用户错题本中所有题目的刷题 VO（不含答案与解析）。
+                    须 JWT，最低角色 USER。返回当前用户错题本中所有题目的刷题 VO（不含答案与解析）。
                     - 可选参数 `bankId`：只返回指定题库的错题，不传则返回全部错题。
                     - 按最近做错时间倒序排列。
                     前端拿到题目后仍通过 `POST /api/v1/practice/banks/{bankId}/questions/{questionId}/submit` 提交答案。

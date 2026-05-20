@@ -44,7 +44,11 @@ springdoc:
     path: /swagger-ui.html
     enabled: true
     # 展开 Model、持久化 Authorize 中的 Bearer Token，便于前端联调
-    default-models-expand-depth: 2
+    default-models-expand-depth: 3
+    doc-expansion: list
     persist-authorization: true
+    display-request-duration: true
   # GET 分页参数展开为 current、pageSize（配合 @ParameterObject）
   default-flat-param-object: true
+  # 保留泛型在文档中的具体类型（配合 ResultResponseOperationCustomizer）
+  override-with-generic-response: false

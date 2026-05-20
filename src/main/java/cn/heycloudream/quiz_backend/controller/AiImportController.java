@@ -44,7 +44,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/v1/ai-import")
 @RequiredArgsConstructor
 @Validated
-@Tag(name = "AI 智能导入", description = "文件上传 → Stream 派发 → 状态轮询 → 预览确认入库（须 JWT）")
+@Tag(name = "AI 智能导入", description = "须 JWT，最低角色 PREMIUM（ADMIN 含）；USER 调用返回 code=403。预览确认入库见 `POST .../questions/batch`")
 @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 @ApiDocStandardResponses
 @RequireRole(UserRole.PREMIUM)
@@ -60,7 +60,7 @@ public class AiImportController {
     @Operation(
             summary = "提交文件导入任务（异步）",
             description = """
-                    `multipart/form-data` 字段：
+                    须 JWT，最低角色 PREMIUM（ADMIN 含）。`multipart/form-data` 字段：
                     - **file**（必填）：.txt / .pdf / .docx，最大 10MB
                     - **bankId**（必填）：目标题库 ID（form 字段；亦可通过 query `?bankId=` 传递，二者等价）
 
@@ -68,7 +68,7 @@ public class AiImportController {
                     轮询：`GET /api/v1/ai-import/tasks/{taskId}/status`。
                     预览确认入库：`POST /api/v1/question-banks/{bankId}/questions/batch`。
 
-                    失败：code=400（文件/格式/大小）、401、404（题库无权）、429（默认每用户每小时 5 次，见配置 quiz.ai-import.rate-limit）。
+                    失败：code=400（文件/格式/大小）、401 未登录、403（角色为 USER 或题库无权）、404 题库不存在、429（默认每用户每小时 5 次，见配置 quiz.ai-import.rate-limit）。
                     """)
     public Result<AiImportSubmitVO> submitImport(
             @Parameter(
@@ -89,12 +89,12 @@ public class AiImportController {
     @Operation(
             summary = "轮询 AI 导入任务状态",
             description = """
-                    任务状态流转：SUBMITTED → PROCESSING → PARSED →（用户确认 batch）→ IMPORTED；
+                    须 JWT，最低角色 PREMIUM（ADMIN 含）。任务状态流转：SUBMITTED → PROCESSING → PARSED →（用户确认 batch）→ IMPORTED；
                     任意环节失败为 FAILED（message 含原因）。
 
                     - **PARSED**：data.questions 为预览列表（QuestionPreviewVO，options/answer 为数组）
                     - **任务不存在或已过期**：code=200 且 **data=null**（非 HTTP 404）
-                    - 仅任务提交者或 ADMIN 可读取任务状态与预览结果
+                    - 仅任务提交者或 ADMIN 可读取任务状态与预览结果；USER 角色在入口已拦截为 code=403
 
                     建议前端 2~5 秒轮询，终态为 IMPORTED 或 FAILED 后停止。
                     """)
