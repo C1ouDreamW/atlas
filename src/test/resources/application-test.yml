@@ -1,0 +1,55 @@
+spring:
+  application:
+    name: quiz-backend-test
+  datasource:
+    url: jdbc:h2:mem:quiz_test;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;DATABASE_TO_LOWER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+      data-locations: classpath:data.sql
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      timeout: 1s
+      repositories:
+        enabled: false
+  task:
+    scheduling:
+      enabled: false
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+jwt:
+  secret: atlas-test-jwt-secret-key-at-least-256-bits-long!!
+  expiration: 86400000
+
+quiz:
+  ai-import:
+    rate-limit:
+      max-requests-per-hour: 100
+    task-timeout-ms: 600000
+  filestorage:
+    local-dir: ${java.io.tmpdir}/atlas-test-upload
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+logging:
+  level:
+    cn.heycloudream.quiz_backend: WARN
+    org.springframework: WARN

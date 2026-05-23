@@ -1,10 +1,4 @@
+# 测试默认激活 test profile；具体配置见 application-test.yml
 spring:
-  datasource:
-    url: jdbc:h2:mem:quiz_test;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-
-mybatis-plus:
-  configuration:
-    map-underscore-to-camel-case: true
+  profiles:
+    active: test

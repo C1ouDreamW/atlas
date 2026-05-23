@@ -1,0 +1,33 @@
+package cn.heycloudream.quiz_backend.support;
+
+import cn.heycloudream.quiz_backend.config.JwtAuthInterceptor;
+import cn.heycloudream.quiz_backend.config.JwtProperties;
+import cn.heycloudream.quiz_backend.config.RoleAuthInterceptor;
+import cn.heycloudream.quiz_backend.config.WebMvcConfig;
+import cn.heycloudream.quiz_backend.exception.GlobalExceptionHandler;
+import cn.heycloudream.quiz_backend.util.JwtUtils;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Import;
+
+/**
+ * {@code @WebMvcTest} 常用切片配置：JWT 拦截器、角色拦截器、全局异常与 JWT 工具。
+ * <p>
+ * 用法示例：
+ * </p>
+ * <pre>
+ * {@code @WebMvcTest(controllers = PracticeController.class)}
+ * {@code @Import(AtlasWebMvcTestConfig.class)}
+ * </pre>
+ * 需对 {@code SysUserMapper} 等依赖使用 {@code @MockBean}，并在带鉴权接口请求上使用
+ * {@link MockMvcTestSupport#withBearerAuth}。
+ */
+@Import({
+        WebMvcConfig.class,
+        JwtAuthInterceptor.class,
+        RoleAuthInterceptor.class,
+        JwtUtils.class,
+        GlobalExceptionHandler.class
+})
+@EnableConfigurationProperties(JwtProperties.class)
+public class AtlasWebMvcTestConfig {
+}
