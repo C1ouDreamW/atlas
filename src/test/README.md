@@ -29,5 +29,5 @@
 ## 编写约定
 
 - **Service 业务逻辑**：纯 Mockito（参考 `PracticeServiceImplTest`），不启 Spring。
-- **Controller / JWT / 校验**：`@WebMvcTest` + `AtlasWebMvcTestConfig` + `MockMvcTestSupport`。
+- **Controller / JWT / 校验**：`@WebMvcTest` + `@ContextConfiguration(classes = {QuizTestApplication.class, XxxController.class})` + `AtlasWebMvcTestConfig` + `MockMvcTestSupport`（测试类在 `cn.heycloudream.quiz_test.controller`）。
 - **Mapper / 全上下文**：`AbstractMockRedisSpringBootTest` 或 `RedisTestcontainersSupport`。

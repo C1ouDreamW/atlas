@@ -16,7 +16,10 @@ import org.springframework.context.annotation.Import;
  * </p>
  * <pre>
  * {@code @WebMvcTest(controllers = PracticeController.class)}
+ * 测试类放在 {@code cn.heycloudream.quiz_test.controller}，并声明：
+ * {@code @ContextConfiguration(classes = {QuizTestApplication.class, XxxController.class})}
  * {@code @Import(AtlasWebMvcTestConfig.class)}
+ * {@code @ActiveProfiles("test")}
  * </pre>
  * 需对 {@code SysUserMapper} 等依赖使用 {@code @MockBean}，并在带鉴权接口请求上使用
  * {@link MockMvcTestSupport#withBearerAuth}。
