@@ -55,18 +55,11 @@ build/
 
 ### 测试题目文件 ###
 assets/
+docs/
 
 ### transf-python ###
 transf-python/temp/
 transf-python/venv/
 transf-python/__pycache__/
 transf-python/*.pyc
-transf-python/*.pyo
-transf-python/*.pyd
-transf-python/*.pyw
-transf-python/*.pyz
-transf-python/*.pywz
-transf-python/*.pyzw
-transf-python/*.pyzwz
-transf-python/*.pyzwzw
 transf-python/docs/

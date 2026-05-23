@@ -195,13 +195,15 @@ Java后端解析JSON，先返回前端预览，用户确认后，再批量插入
 - [x] 超时清理：AiImportTaskWatchdog（@Scheduled，10 分钟超时）
 - [x] 旧 @Async 链路标记 @Deprecated，兼容保留
 
-### 待完成 ○
+
 
 **阶段五 — 刷题与错题本：**
-- [ ] 刷题接口（按题库获取试题列表 / 提交单题答案 / 判分）
-- [ ] 错题本接口（自动收集错题 / 查看错题本 / 按错题本重刷）
-- [ ] `WrongQuestionService` + `WrongQuestionController`
-- [ ] `QuestionBankHotDetailService` 可能需要区分「刷题模式」与「详情模式」
+- [x] 刷题接口（按题库获取试题列表 / 提交单题答案 / 判分）
+- [x] 错题本接口（自动收集错题 / 查看错题本 / 按错题本重刷）
+- [x] `WrongQuestionService` + `WrongQuestionController`
+- [x] `QuestionBankHotDetailService` 可能需要区分「刷题模式」与「详情模式」
+
+### 待完成 ○
 
 **阶段六 — 测试与部署：**
 - [ ] Controller / Service 单元测试（H2 内存库）
