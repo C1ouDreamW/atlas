@@ -1,6 +1,6 @@
 # Project Instructions
 
-**其他重要说明文件在docs目录下，docs/Background.md 是项目背景与目标，docs/plans_1.md 是项目落地路径与架构规划**
+**其他说明**：若仓库中存在 `docs/` 目录，`docs/Background.md` 为项目背景，`docs/plans_1.md` 为落地路径与架构规划。Agent 开发规范以本文件为准。
 
 ## Project Identity
 
@@ -45,10 +45,16 @@ java -jar target/quiz-backend-0.0.1-SNAPSHOT.jar
 | `REDIS_HOST` | 127.0.0.1 | Redis 地址 |
 | `REDIS_PORT` | 6379 | Redis 端口 |
 | `REDIS_PASSWORD` | (空) | Redis 密码 |
-| `DEEPSEEK_API_KEY` | (空) | 大模型 API Key（不跑 AI 导入时可空） |
 | `JWT_SECRET` | YOUR_SUPER... | JWT 签名密钥（HMAC-SHA，已实装） |
+| `FILE_UPLOAD_DIR` | `./data/upload` | AI 导入文件落盘目录（Java 与 Python Worker 须共享） |
+| `AI_IMPORT_RATE_LIMIT_PER_HOUR` | 5 | 每用户 AI 导入提交次数上限 |
+| `AI_IMPORT_TASK_TIMEOUT_MS` | 1800000 | Watchdog 任务超时阈值（毫秒） |
+
+AI 导入的大模型与 MinerU 配置在 **`transf-python/.env`**（见 `transf-python/.env.example`），不由 Java 进程读取。
 
 数据库初始化（人工执行，Agent请勿操作）：`mysql -u root -p < sql/schema/init_core_tables.sql`
+
+历史环境若存在旧角色值（`STUDENT`/`TEACHER`/`VIP` 等），可人工执行 `sql/data/migrate_user_roles.sql`；运行时 `UserRole.fromDbValue` 仍会将 `STUDENT` 映射为 `USER`、空值兜底为 `USER`。
 
 ---
 
@@ -56,21 +62,27 @@ java -jar target/quiz-backend-0.0.1-SNAPSHOT.jar
 
 ```
 cn.heycloudream.quiz_backend
-├── client/          # 第三方 API 调用（LlmChatClient）
 ├── common/
 │   ├── constants/   # 全局常量（Redis Key、校验长度）
 │   ├── dto/         # 通用 DTO（PageRequestDTO）
 │   └── vo/          # 通用 VO（Result<T>, PageResultVO<T>）
-├── config/          # @Configuration（AsyncConfig, QuizLlmProperties）
-├── controller/      # REST Controller
+├── config/          # JWT/MyBatis-Plus/OpenAPI/CORS 等 @Configuration
+├── controller/      # REST Controller（含 admin/ 管理端）
 ├── dto/             # 业务 DTO（按模块分子包）
 ├── entity/          # MyBatis-Plus Entity（禁止暴露到 Controller）
 ├── enums/           # 枚举
 ├── exception/       # BusinessException + GlobalExceptionHandler
 ├── mapper/          # MyBatis-Plus Mapper
-├── service/         # Service 接口 + impl/ + 横切子包
-├── util/            # 工具类
+├── service/
+│   ├── ai/          # Redis Stream 派发、任务状态/结果、限流、Watchdog、幂等锁
+│   ├── cache/       # 热点缓存驱逐
+│   ├── file/        # 上传文件落盘（LocalFileStorageService）
+│   ├── guard/       # BankAccessGuard 题库归属与权限
+│   └── impl/        # 业务 Service 实现
+├── util/            # JWT、UserContextHolder、TaskIdGenerator 等
 └── vo/              # 响应 VO（按模块分子包）
+
+transf-python/       # 独立 Python Worker（MinerU 解析 + LLM 调用，消费 Redis Stream）
 ```
 
 ### 硬规则
@@ -99,7 +111,7 @@ private void requireOwnedBank(Long currentUserId, Long bankId) {
 }
 ```
 
-> **当前状态**：JWT 鉴权已实装。`JwtAuthInterceptor` 从 `Authorization: Bearer <token>` 提取 Token 验签后写入 `UserContextHolder`，Controller 中统一通过 `UserContextHolder.get()` 获取当前用户 ID。白名单路径：注册/登录、Swagger、题库大厅、公开热点题库详情。
+> **当前状态**：JWT 鉴权已实装。`JwtAuthInterceptor` 从 `Authorization: Bearer <token>` 提取 Token 验签后**每次请求查库**写入 `UserRole` 到 `UserContextHolder`；Controller 通过 `UserContextHolder.get()` 取用户 ID。题库归属统一走 `BankAccessGuard`（管理员可 bypass）。白名单路径：注册/登录、Swagger、题库大厅、公开热点题库详情。
 
 ### 2. Redis 缓存 (Cache-Aside)
 
@@ -114,39 +126,37 @@ private void requireOwnedBank(Long currentUserId, Long bankId) {
 
 > 新增缓存场景时必须沿用此模式，不要混入 Spring Cache 自动管理。
 
-### 3. AI 智能导入（已重构为 Redis Stream 任务体系）
+### 3. AI 智能导入（Redis Stream + Python Worker）
 
 ```
-【新链路 — 基于 Redis Stream】
-                                                        
-前端上传文件 → Java后端（生产者）接收后，将任务存入Redis Stream中，并返回任务ID给前端。
-Python后端（消费者）从Redis Stream中拉取任务，并调用 MinerU API 将文档转换为Markdown文本（异步处理）。
-Python后端将Markdown文本发送给大模型API，并返回标准的题目 JSON 数组（异步处理）。
-Java后端解析JSON，先返回前端预览，用户确认后，再批量插入 (Batch Insert) 到 MySQL 的试题表中。
-
-注意：Python后端需要实现一个独立的Worker，不要与Java后端耦合在一起。Python程序在transf-python目录下。
-
+前端上传文件
+  → Java（生产者）：校验、落盘、写 meta/status、XADD Redis Stream，返回 taskId
+  → Python Worker（消费者）：XREADGROUP 拉任务 → MinerU 转 Markdown → LLM 解析 → 写 result/status
+  → 前端轮询 GET /api/v1/ai-import/tasks/{taskId}/status（PARSED 时含预览）
+  → 用户确认 POST /api/v1/question-banks/{bankId}/questions/batch 幂等落库
 ```
+
+**对外 API（仅此一套，无旧端点）：**
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/api/v1/ai-import/submit` | multipart 上传，返回 taskId |
+| `GET` | `/api/v1/ai-import/tasks/{taskId}/status` | 轮询状态与预览 |
+| `POST` | `/api/v1/question-banks/{bankId}/questions/batch` | 确认导入（SETNX 幂等） |
 
 关键约束：
-- 任务调度通过 Redis Stream（`quiz:task:stream`，消费组 `quiz-ai-workers`），解耦生产者/消费者
-- 解析结果**不直接落库**，先写 `quiz:task:result:{taskId}` 供前端预览
-- 用户确认后通过 `POST /{bankId}/questions/batch` 幂等落库（SETNX 锁，同一 taskId 只入库一次）
-- 文件上传入口接入限流：`AiImportRateLimiter`（Redis Lua 滑动窗口，默认 5 次/小时/用户）
-- `AiImportTaskWatchdog` @Scheduled 每 2 分钟扫描超时 PROCESSING 任务，自动标记 FAILED
-- 旧 `@Async` 链路（`AiQuestionImportAsyncProcessor`）已标记 @Deprecated，兼容保留
+- Stream：`quiz:task:stream`，消费组 `quiz-ai-workers`；Worker 在 `transf-python/` 独立进程运行
+- 解析结果**不直接落库**，先写 `quiz:task:result:{taskId}`；状态键 `quiz:task:status:{taskId}`
+- Java 与 Python 写 Redis 状态时使用 CAS/终态保护，避免 Watchdog、Worker、落库互相覆盖
+- 限流：`AiImportRateLimiter`（Redis Lua 滑动窗口，默认 5 次/小时/用户）
+- 超时：`AiImportTaskWatchdog` @Scheduled 扫描长时间 `PROCESSING` 任务并标记 `FAILED`（阈值见 `quiz.ai-import.task-timeout-ms`）
+- 批量落库时若请求体题目数大于 Redis 缓存（前端轮询合并重复），以缓存为准防重复入库
 
-> 旧端点 `POST /{bankId}/ai-import/text|file` 和 `GET /{bankId}/ai-import/status` 已标注废弃，指向新 `/api/v1/ai-import/*` 路径。
+> **已移除**：Java 内 `@Async` 直调 LLM、`DocumentParseUtils`、旧 HTTP 端点 `/{bankId}/ai-import/text|file` 与 `/{bankId}/ai-import/status`。勿在新代码中恢复。
 
 ### 4. 大模型 JSON 清洗
 
-`LlmJsonPayloadSanitizer.stripMarkdownCodeFence()` 去除 LLM 输出中可能的 markdown 代码围栏：
-
-```
-输入: ```json\n[...]\n```   →  输出: [...]
-```
-
-调用方在调用 `ObjectMapper.readValue()` 前必须先经过此清洗。
+Markdown 代码围栏清洗在 **Python Worker** `transf-python/llm_client.py` 完成（正则去除 ` ```json ... ``` ` 并提取 JSON 数组）。Java 侧只消费已结构化的预览 JSON，不再直接调用 LLM。
 
 ---
 
@@ -161,6 +171,7 @@ Java后端解析JSON，先返回前端预览，用户确认后，再批量插入
 
 注意：
 - `question.options_json` 和 `question.answer_json` 是 MySQL JSON 列，Java 侧用 `String` 存储 JSON 文本，不依赖 MySQL JSON 函数
+- `question.raw_llm_json` 为历史预留列，当前落库流程写入 `null`，可忽略
 - `wrong_question` 的业务约定：首次做错 INSERT；移除时 UPDATE `is_deleted=1`（逻辑删）；再次做错同一题 UPDATE 复活 `is_deleted=0` + 递增 `wrong_count`。禁止重复 INSERT。
 
 ---
@@ -174,7 +185,7 @@ Java后端解析JSON，先返回前端预览，用户确认后，再批量插入
 - [x] 统一 Result/PageResultVO 响应 + GlobalExceptionHandler
 - [x] 题库 CRUD + 试题 CRUD（含归属校验）
 - [x] 题库大厅（公开题库分页列表 `GET /api/v1/question-banks/public`，无需登录）
-- [x] AI 智能导入全链路（大模型调用 → 异步处理 → JSON 清洗 → 校验落库 → 状态轮询）
+- [x] AI 智能导入全链路（Redis Stream → Python Worker → 预览 → 幂等落库 → 状态轮询）
 - [x] Redis 热点缓存（Cache-Aside + 防击穿 + 防穿透 + 防雪崩 + 写驱逐）
 - [x] 细化的 AI 系统提示词
 
@@ -185,15 +196,13 @@ Java后端解析JSON，先返回前端预览，用户确认后，再批量插入
 - [x] `UserContextHolder`（ThreadLocal）存取当前用户
 - [x] 移除 Controller 中 11 处 `userId = 1L` 硬编码（已替换为 `UserContextHolder.get()`）
 
-**阶段四 — 文档解析 + AI 导入重构：**
-- [x] PDFBox 集成：PDF 文件 → 纯文本抽取
-- [x] Apache POI 集成：.docx 文件 → 纯文本抽取
-- [x] `DocumentParseUtils` 统一解析引擎（.txt/.pdf/.docx，try-with-resources）
-- [x] Redis Stream 任务体系：生产者/消费者解耦，消费组 `quiz-ai-workers`
-- [x] 预览→确认→幂等落库：沙盒草稿箱机制，SETNX 防重
+**阶段四 — 文档解析 + AI 导入（Stream 架构）：**
+- [x] `transf-python` Worker：MinerU 文档解析 + DeepSeek LLM 结构化
+- [x] Redis Stream 任务体系：Java 生产者 / Python 消费者，消费组 `quiz-ai-workers`
+- [x] 预览→确认→幂等落库：Redis 草稿 + SETNX 防重
 - [x] 限流防护：AiImportRateLimiter（Redis Lua，5 次/小时/用户）
-- [x] 超时清理：AiImportTaskWatchdog（@Scheduled，10 分钟超时）
-- [x] 旧 @Async 链路标记 @Deprecated，兼容保留
+- [x] 超时清理：AiImportTaskWatchdog（@Scheduled，默认 30 分钟阈值，可配置）
+- [x] Java/Python Redis 状态 CAS 互斥（防 Watchdog 与 Worker 竞态）
 
 
 
@@ -221,7 +230,7 @@ Java后端解析JSON，先返回前端预览，用户确认后，再批量插入
 3. **定义 VO**：放在 `vo/{module}/` 下，不暴露内部字段（如 `rawLlmJson`）
 4. **写 Service 接口 + Impl**：
    - 需要事务的方法加 `@Transactional(rollbackFor = Exception.class)`
-   - 涉及题库归属的在入口处调用 `requireOwnedBank()`
+   - 涉及题库归属的在入口处调用 `BankAccessGuard.requireOwnedBank()`（或带 role 的重载）
    - 写操作后调用 `questionBankDetailCacheEvictor.evict()`（如果影响题库内容）
 5. **写 Controller**：
    - 类上加 `@Validated`，参数上加 `@Valid`
@@ -244,25 +253,26 @@ Java后端解析JSON，先返回前端预览，用户确认后，再批量插入
 
 | 文件 | 重要性 | 说明 |
 |------|--------|------|
-| `docs/plans_1.md` | ★★★ | 六阶段完整落地计划 + 排坑指南 + 面试包装点 |
-| `docs/待办清单.md` | ★★★ | 总 TODO 列表（含代码行号） |
+| `docs/plans_1.md` | ★★★ | 六阶段完整落地计划（若仓库中存在） |
+| `docs/待办清单.md` | ★★★ | 总 TODO 列表（若仓库中存在） |
 | `src/main/java/.../config/JwtAuthInterceptor.java` | ★★★ | JWT 鉴权拦截器 |
+| `src/main/java/.../config/RoleAuthInterceptor.java` | ★★★ | 角色权限拦截器（`@RequireRole`） |
 | `src/main/java/.../util/JwtUtils.java` | ★★★ | JWT 签发/验签工具 |
+| `src/main/java/.../service/guard/BankAccessGuard.java` | ★★★ | 题库归属与管理员 bypass |
 | `src/main/java/.../controller/UserController.java` | ★★★ | 用户注册/登录接口 |
-| `docs/prompt_1.md` | ★★ | 各阶段 AI 辅助开发 Prompt 模板 |
-| `docs/JMeter压测.md` | ★★ | 压测方案（对照实验设计 + 报告指标） |
-| `sql/schema/init_core_tables.sql` | ★★★ | 数据库 DDL |
-| `src/main/resources/prompts/ai-import-system.txt` | ★★★ | LLM 系统提示词 |
-| `src/main/resources/application.yaml` | ★★ | 配置（含环境变量占位） |
-| `src/main/java/.../exception/GlobalExceptionHandler.java` | ★★ | 全局异常映射 |
-| `src/main/java/.../controller/AiImportController.java` | ★★★ | AI 导入新 Controller（提交/轮询） |
-| `src/main/java/.../service/ai/AiImportStreamConsumer.java` | ★★★ | Redis Stream 消费者 |
+| `src/main/java/.../controller/AiImportController.java` | ★★★ | AI 导入提交与状态轮询 |
+| `src/main/java/.../service/impl/AiQuestionImportServiceImpl.java` | ★★★ | AI 导入 Java 生产者门面 |
 | `src/main/java/.../service/ai/RedisStreamTaskDispatcher.java` | ★★★ | Stream 任务派发 |
-| `src/main/java/.../service/ai/AiImportTaskStatusStore.java` | ★★ | 任务状态存储 |
-| `src/main/java/.../service/ai/AiImportResultStore.java` | ★★ | 任务结果存储 |
+| `src/main/java/.../service/ai/AiImportTaskStatusStore.java` | ★★ | 任务状态 Redis 存储 |
+| `src/main/java/.../service/ai/AiImportResultStore.java` | ★★ | 预览结果 Redis 存储 |
 | `src/main/java/.../service/ai/ImportIdempotentService.java` | ★★ | 批量导入幂等锁 |
 | `src/main/java/.../service/ai/AiImportRateLimiter.java` | ★★ | 提交限流器 |
 | `src/main/java/.../service/ai/AiImportTaskWatchdog.java` | ★★ | 超时任务清理 |
-| `src/main/java/.../util/DocumentParseUtils.java` | ★★★ | 文档解析引擎（.txt/.pdf/.docx → 纯文本） |
-| `src/main/java/.../service/impl/QuestionBankHotDetailServiceImpl.java` | ★★★ | Redis 缓存全部逻辑 |
-| `src/main/java/.../service/impl/AiQuestionImportAsyncProcessor.java` | ★★★ | AI 导入异步核心链路（@Deprecated） |
+| `transf-python/worker.py` | ★★★ | Python Stream 消费者入口 |
+| `transf-python/llm_client.py` | ★★ | LLM 调用与 JSON 围栏清洗 |
+| `transf-python/redis_manager.py` | ★★ | Worker 侧 Redis 状态 CAS |
+| `sql/schema/init_core_tables.sql` | ★★★ | 数据库 DDL |
+| `sql/data/migrate_user_roles.sql` | ★★ | 历史角色值迁移脚本 |
+| `src/main/resources/application-dev.yaml` | ★★ | 本地/dev 配置（含 AI 导入、文件落盘） |
+| `src/main/java/.../exception/GlobalExceptionHandler.java` | ★★ | 全局异常映射 |
+| `src/main/java/.../service/impl/QuestionBankHotDetailServiceImpl.java` | ★★★ | Redis 热点缓存全部逻辑 |

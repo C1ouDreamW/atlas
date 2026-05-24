@@ -38,16 +38,13 @@ public enum UserRole {
     }
 
     /**
-     * 从数据库角色值解析，兼容历史 STUDENT 角色为 USER。
+     * 从数据库角色值解析。
      */
     public static UserRole fromDbValue(String value) {
         if (value == null || value.isBlank()) {
             return USER;
         }
         String normalized = value.trim().toUpperCase();
-        if ("STUDENT".equals(normalized)) {
-            return USER;
-        }
         try {
             return UserRole.valueOf(normalized);
         } catch (IllegalArgumentException e) {
