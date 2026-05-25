@@ -14,9 +14,8 @@ from question_preview import build_preview_list
 
 logger = logging.getLogger(__name__)
 
-_PROMPT_CANDIDATES = [
-    Path(__file__).resolve().parent / "prompts" / "ai-import-system.txt",
-]
+_PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
+_DEFAULT_SYSTEM_PROMPT_FILE = _PROMPTS_DIR / "ai-import-system.txt"
 
 _FALLBACK_SYSTEM_PROMPT = """你是「非结构化文本 → 结构化题库」解析引擎。
 【输出格式】只输出合法 JSON 数组，禁止 Markdown 代码块与说明文字。
@@ -33,14 +32,34 @@ Markdown 内容：
 """
 
 
+def _resolve_system_prompt_path() -> Path:
+    configured = settings.llm_system_prompt_path
+    if configured:
+        path = Path(configured)
+        if not path.is_absolute():
+            path = Path(__file__).resolve().parent / path
+        return path.resolve()
+    return _DEFAULT_SYSTEM_PROMPT_FILE.resolve()
+
+
 def _load_system_prompt() -> str:
-    for path in _PROMPT_CANDIDATES:
-        if path.is_file():
-            text = path.read_text(encoding="utf-8").strip()
-            if text:
-                logger.info("Loaded system prompt from %s", path)
-                return text
-    logger.warning("Using built-in fallback system prompt")
+    path = _resolve_system_prompt_path()
+    if path.is_file():
+        text = path.read_text(encoding="utf-8").strip()
+        if text:
+            logger.info("Loaded system prompt from %s", path)
+            return text
+        raise ValueError(f"System prompt file is empty: {path}")
+
+    if settings.llm_system_prompt_path:
+        raise FileNotFoundError(
+            f"LLM_SYSTEM_PROMPT_PATH does not exist or is not a file: {path}"
+        )
+
+    logger.warning(
+        "Default system prompt file missing (%s), using built-in fallback",
+        path,
+    )
     return _FALLBACK_SYSTEM_PROMPT
 
 
