@@ -3,6 +3,7 @@ package cn.heycloudream.ishua_backend.service.impl;
 import cn.heycloudream.ishua_backend.common.constants.ValidationConstants;
 import cn.heycloudream.ishua_backend.enums.AiImportTaskStatus;
 import cn.heycloudream.ishua_backend.exception.BusinessException;
+import cn.heycloudream.ishua_backend.service.AiImportTaskService;
 import cn.heycloudream.ishua_backend.service.AiQuestionImportService;
 import cn.heycloudream.ishua_backend.service.ai.AiImportTaskMetaStore;
 import cn.heycloudream.ishua_backend.service.ai.AiImportTaskStatusStore;
@@ -41,6 +42,7 @@ public class AiQuestionImportServiceImpl implements AiQuestionImportService {
     private final RedisStreamTaskDispatcher taskDispatcher;
     private final AiImportTaskStatusStore taskStatusStore;
     private final AiImportTaskMetaStore taskMetaStore;
+    private final AiImportTaskService aiImportTaskService;
     private final BankAccessGuard bankAccessGuard;
 
     @Override
@@ -83,6 +85,7 @@ public class AiQuestionImportServiceImpl implements AiQuestionImportService {
                 .type("file")
                 .build();
 
+        aiImportTaskService.createOnSubmit(meta);
         taskMetaStore.write(taskId, meta);
         taskDispatcher.dispatch(meta);
         taskStatusStore.write(taskId, AiImportTaskStatus.SUBMITTED, null, null);

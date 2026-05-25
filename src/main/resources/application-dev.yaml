@@ -27,6 +27,10 @@ ishua:
     # 任务整体超时阈值（毫秒）。需 ≥ MinerU 单任务轮询超时(默认 1800s) + LLM 调用时间，
     # 否则 Watchdog 会强行把仍在处理中的长任务标为 FAILED。
     task-timeout-ms: ${AI_IMPORT_TASK_TIMEOUT_MS:1800000}
+    cleanup-default-older-than-days: ${AI_IMPORT_CLEANUP_DEFAULT_OLDER_THAN_DAYS:7}
+    redis-sync:
+      enabled: ${AI_IMPORT_REDIS_SYNC_ENABLED:true}
+      interval-ms: ${AI_IMPORT_REDIS_SYNC_INTERVAL_MS:30000}
   filestorage:
     # 文件落盘根目录。Java 后端与 Python Worker 必须能访问同一目录（绝对路径）。
     # Windows 默认 ./data/upload，Linux 可通过 FILE_UPLOAD_DIR 环境变量覆盖。

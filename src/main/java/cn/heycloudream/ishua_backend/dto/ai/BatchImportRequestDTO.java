@@ -16,17 +16,22 @@ import java.util.List;
  * @author atlas
  */
 @Data
-@Schema(description = "批量确认导入请求")
+@Schema(description = """
+        批量确认导入请求（JSON）。须在任务 status=PARSED 时提交；服务端优先使用 DB/Redis 中的预览缓存落库。
+        """)
 public class BatchImportRequestDTO {
 
     @NotBlank(message = "任务 ID 不能为空")
-    @Schema(description = "AI 提交/轮询接口返回的任务 ID（UUID）", example = "a1b2c3d4e5f67890abcdef1234567890")
+    @Schema(
+            description = "AI 导入任务 ID（UUID），来自 submit 响应、GET /ai-import/tasks 或 GET .../tasks/{taskId}/status",
+            example = "a1b2c3d4e5f67890abcdef1234567890",
+            requiredMode = Schema.RequiredMode.REQUIRED)
     private String taskId;
 
     @NotEmpty(message = "导入题目列表不能为空")
     @Valid
     @ArraySchema(
-            arraySchema = @Schema(description = "经用户确认/编辑后的题目列表（与预览 QuestionPreviewVO 结构一致）"),
+            arraySchema = @Schema(description = "经用户预览页确认/编辑后的题目列表；结构与轮询接口 QuestionPreviewVO 一致"),
             schema = @Schema(implementation = QuestionPreviewVO.class))
     private List<QuestionPreviewVO> questions;
 }

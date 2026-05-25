@@ -12,9 +12,11 @@ import cn.heycloudream.ishua_backend.dto.question.QuestionInBankPageQueryDTO;
 import cn.heycloudream.ishua_backend.dto.question.QuestionUpdateDTO;
 import cn.heycloudream.ishua_backend.dto.questionbank.QuestionBankCreateDTO;
 import cn.heycloudream.ishua_backend.dto.questionbank.QuestionBankUpdateDTO;
+import cn.heycloudream.ishua_backend.entity.AiImportTask;
 import cn.heycloudream.ishua_backend.enums.AiImportTaskStatus;
 import cn.heycloudream.ishua_backend.enums.UserRole;
 import cn.heycloudream.ishua_backend.exception.BusinessException;
+import cn.heycloudream.ishua_backend.service.AiImportTaskService;
 import cn.heycloudream.ishua_backend.service.QuestionBankHotDetailService;
 import cn.heycloudream.ishua_backend.service.QuestionBankService;
 import cn.heycloudream.ishua_backend.service.QuestionService;
@@ -72,6 +74,7 @@ public class QuestionBankController {
     private final AiImportTaskStatusStore taskStatusStore;
     private final AiImportResultStore resultStore;
     private final AiImportTaskMetaStore taskMetaStore;
+    private final AiImportTaskService aiImportTaskService;
 
     @GetMapping
     @RequireRole(UserRole.PREMIUM)
@@ -167,13 +170,30 @@ public class QuestionBankController {
     @Operation(
             summary = "批量确认导入 AI 解析题目（幂等）",
             description = """
-                    须 JWT，最低角色 PREMIUM（ADMIN 可 bypass 归属或任务 meta 校验）。前端在 status=PARSED 预览确认后提交 BatchImportRequestDTO。
-                    questions 使用 QuestionPreviewVO（options/answer 为数组，与预览接口一致）。
+                    须 JWT，最低角色 PREMIUM（ADMIN 可 bypass 题库归属）。前端在 `GET .../ai-import/tasks/{taskId}/status` 返回 **PARSED** 且预览确认后调用。
 
-                    - 同一 taskId **仅落库一次**：已导入再次提交 code=200、data=null
-                    - 并发落库中：code=409「该任务正在导入中」
-                    - taskId 无效/过期：code=400
-                    - 角色为 USER：code=403；task 与 bankId/用户不匹配：code=403
+                    **路径参数**：
+                    - **bankId**：须与任务所属题库一致（路径与任务 meta/DB 记录校验）
+
+                    **请求体**（`BatchImportRequestDTO`）：
+                    - **taskId**（必填）：submit 或列表/轮询接口获得的 UUID
+                    - **questions**（必填）：用户确认后的题目列表（QuestionPreviewVO；options/answer 为数组）
+
+                    **预览数据来源优先级**（服务端解析待落库列表时）：
+                    1. MySQL `ai_import_task.preview_json`（权威，关页后可恢复）
+                    2. Redis `ishua:task:result:{taskId}`
+                    3. 请求体 `questions`（若请求体条数明显多于缓存，以缓存为准防重复落库）
+
+                    **幂等与状态**：
+                    - 已成功 IMPORTED：再次提交 code=200、data=null（幂等成功）
+                    - 并发落库中：code=409「该任务正在导入中，请稍候再试」
+                    - 任务 status=EXPIRED：code=400「任务已过期，请重新上传文件」
+                    - DB 存在且 status 非 PARSED：code=400「任务当前状态不可导入：{status}」
+                    - taskId 在 DB/Redis 均不存在：code=400「任务不存在或已过期」
+
+                    **成功**：题目写入 `question` 表，任务标记 IMPORTED，清理 Redis 预览缓存。
+
+                    **失败**：code=401 未登录；code=403（USER 角色、题库无权、task 与 bankId/用户不匹配）；code=400/409 见上
                     """)
     public Result<Void> batchImportQuestions(
             @Parameter(description = "题库 ID", required = true, example = "1001")
@@ -181,6 +201,15 @@ public class QuestionBankController {
             @Valid @RequestBody BatchImportRequestDTO body) {
         Long userId = UserContextHolder.get();
         String taskId = body.getTaskId();
+        AiImportTask dbTask = aiImportTaskService.findByTaskId(taskId).orElse(null);
+        if (dbTask != null) {
+            if (AiImportTaskStatus.IMPORTED.name().equals(dbTask.getStatus())) {
+                return Result.success(null);
+            }
+            if (AiImportTaskStatus.EXPIRED.name().equals(dbTask.getStatus())) {
+                throw new BusinessException(400, "任务已过期，请重新上传文件");
+            }
+        }
 
         // 已成功导入：直接幂等返回
         if (importIdempotentService.isAlreadyImported(taskId)) {
@@ -193,16 +222,27 @@ public class QuestionBankController {
 
         boolean dbImported = false;
         try {
-            AiImportTaskMetaVO meta = taskMetaStore.read(taskId)
-                    .orElseThrow(() -> new BusinessException(400, "任务不存在或已过期"));
-            if (!bankId.equals(meta.getBankId())
-                    || (!UserContextHolder.isAdmin() && !userId.equals(meta.getUserId()))) {
-                throw new BusinessException(403, "任务与题库不匹配或无权操作");
+            if (dbTask != null) {
+                if (!bankId.equals(dbTask.getBankId())
+                        || (!UserContextHolder.isAdmin() && !userId.equals(dbTask.getUserId()))) {
+                    throw new BusinessException(403, "任务与题库不匹配或无权操作");
+                }
+            } else {
+                AiImportTaskMetaVO meta = taskMetaStore.read(taskId)
+                        .orElseThrow(() -> new BusinessException(400, "任务不存在或已过期"));
+                if (!bankId.equals(meta.getBankId())
+                        || (!UserContextHolder.isAdmin() && !userId.equals(meta.getUserId()))) {
+                    throw new BusinessException(403, "任务与题库不匹配或无权操作");
+                }
+            }
+            if (dbTask != null && !AiImportTaskStatus.PARSED.name().equals(dbTask.getStatus())) {
+                throw new BusinessException(400, "任务当前状态不可导入：" + dbTask.getStatus());
             }
 
             List<QuestionPreviewVO> previews = resolveImportPreviews(taskId, body.getQuestions());
             questionService.batchImportPreview(userId, bankId, previews);
             dbImported = true;
+            aiImportTaskService.markImported(taskId, previews.size());
 
             // 落库成功 → 立即标记 imported（长 TTL，覆盖原有锁），即使后续步骤抛错也不会误删终态标记
             importIdempotentService.markImported(taskId);
@@ -229,7 +269,9 @@ public class QuestionBankController {
      * 若请求体题目数明显多于缓存（常见于轮询合并重复），回退为缓存列表。
      */
     private List<QuestionPreviewVO> resolveImportPreviews(String taskId, List<QuestionPreviewVO> fromBody) {
-        return resultStore.readQuestions(taskId)
+        return aiImportTaskService.readPreviewQuestions(taskId)
+                .filter(cache -> !cache.isEmpty())
+                .or(() -> resultStore.readQuestions(taskId))
                 .filter(cache -> !cache.isEmpty())
                 .map(cache -> {
                     if (fromBody.size() > cache.size()) {

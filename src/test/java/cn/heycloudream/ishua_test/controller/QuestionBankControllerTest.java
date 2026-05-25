@@ -6,6 +6,7 @@ import cn.heycloudream.ishua_backend.common.vo.PageResultVO;
 import cn.heycloudream.ishua_backend.dto.questionbank.QuestionBankCreateDTO;
 import cn.heycloudream.ishua_backend.exception.BusinessException;
 import cn.heycloudream.ishua_backend.mapper.SysUserMapper;
+import cn.heycloudream.ishua_backend.service.AiImportTaskService;
 import cn.heycloudream.ishua_backend.service.QuestionBankHotDetailService;
 import cn.heycloudream.ishua_backend.service.QuestionBankService;
 import cn.heycloudream.ishua_backend.service.QuestionService;
@@ -75,6 +76,9 @@ class QuestionBankControllerTest {
 
     @MockBean
     private AiImportTaskMetaStore taskMetaStore;
+
+    @MockBean
+    private AiImportTaskService aiImportTaskService;
 
     @MockBean
     private SysUserMapper sysUserMapper;

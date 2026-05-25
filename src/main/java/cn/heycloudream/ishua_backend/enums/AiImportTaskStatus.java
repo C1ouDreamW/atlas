@@ -25,13 +25,16 @@ public enum AiImportTaskStatus {
     IMPORTED,
 
     /** 任意环节异常（含超时/取消）。 */
-    FAILED;
+    FAILED,
+
+    /** 解析成功后长时间未确认，已由管理端或清理策略过期。 */
+    EXPIRED;
 
     /**
      * 是否为终态（后续不再变化）。
      */
     public boolean isTerminal() {
-        return this == IMPORTED || this == FAILED;
+        return this == IMPORTED || this == FAILED || this == EXPIRED;
     }
 
     /**
@@ -41,9 +44,9 @@ public enum AiImportTaskStatus {
         return switch (this) {
             case SUBMITTED -> target == PROCESSING || target == FAILED;
             case PROCESSING -> target == PARSED || target == FAILED;
-            case PARSED -> target == IMPORTING || target == FAILED;
+            case PARSED -> target == IMPORTING || target == IMPORTED || target == FAILED || target == EXPIRED;
             case IMPORTING -> target == IMPORTED || target == FAILED;
-            case IMPORTED, FAILED -> false;
+            case IMPORTED, FAILED, EXPIRED -> false;
         };
     }
 

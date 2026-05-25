@@ -2,6 +2,7 @@ package cn.heycloudream.ishua_backend.service.ai;
 
 import cn.heycloudream.ishua_backend.common.constants.IShuaRedisCacheConstants;
 import cn.heycloudream.ishua_backend.enums.AiImportTaskStatus;
+import cn.heycloudream.ishua_backend.service.AiImportTaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,6 +33,7 @@ public class AiImportTaskWatchdog {
     private final StringRedisTemplate stringRedisTemplate;
     private final AiImportTaskStatusStore statusStore;
     private final AiImportTaskMetaStore metaStore;
+    private final AiImportTaskService aiImportTaskService;
 
     /**
      * 任务超时阈值（毫秒），默认 30 分钟。
@@ -115,6 +117,9 @@ public class AiImportTaskWatchdog {
             boolean marked = statusStore.markFailedIfProcessing(taskId,
                     "任务处理超时（已运行 " + elapsedMinutes + " 分钟，阈值 " + (taskTimeoutMs / 60_000) + " 分钟）");
             if (marked) {
+                aiImportTaskService.markStatus(taskId, AiImportTaskStatus.FAILED,
+                        "任务处理超时（已运行 " + elapsedMinutes + " 分钟，阈值 " + (taskTimeoutMs / 60_000) + " 分钟）",
+                        null);
                 log.warn("[Watchdog] 任务超时已标记 FAILED taskId={} elapsedMinutes={}", taskId, elapsedMinutes);
                 return true;
             }
