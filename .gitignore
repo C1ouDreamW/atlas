@@ -73,3 +73,5 @@ transf-python/*.pyc
 transf-python/docs/
 
 jmeter/
+
+data/
