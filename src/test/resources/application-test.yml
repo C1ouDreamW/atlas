@@ -1,8 +1,8 @@
 spring:
   application:
-    name: quiz-backend-test
+    name: ishua-backend-test
   datasource:
-    url: jdbc:h2:mem:quiz_test;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;DATABASE_TO_LOWER=TRUE
+    url: jdbc:h2:mem:ishua_test;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;DATABASE_TO_LOWER=TRUE
     driver-class-name: org.h2.Driver
     username: sa
     password:
@@ -35,7 +35,7 @@ jwt:
   secret: atlas-test-jwt-secret-key-at-least-256-bits-long!!
   expiration: 86400000
 
-quiz:
+ishua:
   ai-import:
     rate-limit:
       max-requests-per-hour: 100
@@ -51,5 +51,5 @@ springdoc:
 
 logging:
   level:
-    cn.heycloudream.quiz_backend: WARN
+    cn.heycloudream.ishua_backend: WARN
     org.springframework: WARN

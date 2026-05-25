@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 
 StreamMessage = Tuple[str, Dict[str, Any]]
 
-# 与 Java QuizRedisCacheConstants 保持一致
-STATUS_KEY_PREFIX = "quiz:task:status:"
-RESULT_KEY_PREFIX = "quiz:task:result:"
+# 与 Java IShuaRedisCacheConstants 保持一致
+STATUS_KEY_PREFIX = "ishua:task:status:"
+RESULT_KEY_PREFIX = "ishua:task:result:"
 STATUS_TTL_SECONDS = 3600
 RESULT_TTL_SECONDS = 1800
 MAX_MESSAGE_CHARS = 500

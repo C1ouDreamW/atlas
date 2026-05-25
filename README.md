@@ -1,4 +1,4 @@
-# Atlas - 智能在线题库与刷题平台 (Quiz Backend)
+# Atlas - 智能在线题库与刷题平台 (iShua Backend)
 
 ![Java](https://img.shields.io/badge/Java-17-blue.svg)
 ![Spring Boot](https://img.shields.io/badge/SpringBoot-3.5.x-brightgreen.svg)
@@ -83,7 +83,7 @@ mvn spring-boot:run
 或通过 `java -jar` 运行构建产物：
 ```bash
 mvn package -DskipTests
-java -jar target/quiz-backend-0.0.1-SNAPSHOT.jar
+java -jar target/ishua-backend-0.0.1-SNAPSHOT.jar
 ```
 
 ### 3. 启动 AI 导入 Worker（可选）
@@ -157,7 +157,7 @@ mvn test
 ├── transf-python/           # AI 导入 Worker（MinerU + LLM，消费 Redis Stream）
 ├── src/
 │   ├── main/
-│   │   ├── java/cn/.../quiz_backend/
+│   │   ├── java/cn/.../ishua_backend/
 │   │   │   ├── common/      # 公共常量、分页 DTO、Result/PageResultVO
 │   │   │   ├── config/      # JWT/角色拦截、MyBatis-Plus、OpenAPI、CORS
 │   │   │   ├── controller/  # REST 控制器（含 admin/ 管理端）

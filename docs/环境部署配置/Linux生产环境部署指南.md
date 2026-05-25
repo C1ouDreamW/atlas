@@ -2,7 +2,7 @@
 
 本文档面向 **Linux 服务器**（推荐 Ubuntu 22.04 LTS / Debian 12 / CentOS Stream 9 等），指导将 Atlas 后端以生产标准部署：专用系统用户、强密钥、systemd 托管、防火墙、可选 Nginx 反向代理、日志与备份、开机自启，以及可选 Python AI Worker。
 
-配置事实来源：`application.yaml`、`pom.xml`、`QuizRedisCacheConstants`、`WebMvcConfig`、`CorsConfig`、`transf-python/config.py` 等。
+配置事实来源：`application.yaml`、`pom.xml`、`IShuaRedisCacheConstants`、`WebMvcConfig`、`CorsConfig`、`transf-python/config.py` 等。
 
 ---
 
@@ -11,7 +11,7 @@
 | 项 | 说明 |
 |----|------|
 | 部署形态 | 单节点或小规模 VM（JDK 17 + MySQL 8 + Redis + 可选 Nginx） |
-| Java 应用 | `quiz-backend-0.0.1-SNAPSHOT.jar`，默认端口 **8080** |
+| Java 应用 | `ishua-backend-0.0.1-SNAPSHOT.jar`，默认端口 **8080** |
 | 进程管理 | **systemd**（推荐） |
 | 安全基线 | 非 root 运行、强 `JWT_SECRET`、数据库独立账号、Redis 密码、防火墙最小放行 |
 | AI 链路 | Java 入队 + **transf-python** Worker 消费 Redis Stream |
@@ -33,7 +33,7 @@
                         │ 127.0.0.1:8080
                         ▼
               ┌─────────────────────┐
-              │  quiz-backend.jar  │  用户: atlas
+              │  ishua-backend.jar  │  用户: atlas
               │  Spring Boot 3.5   │
               └─────────┬───────────┘
                         │
@@ -44,7 +44,7 @@
         ▲               ▲
         │               │
         └───── transf-python Worker (systemd: atlas-worker)
-              quiz:task:stream / quiz-ai-workers
+              ishua:task:stream / ishua-ai-workers
 ```
 
 **CORS 说明：** 当前 `CorsConfig` 仅允许 `http://localhost:5173`，**不适合生产前端域名**。上线前须将 `FRONTEND_ORIGIN` 改为正式前端地址（或改为配置化），重新打包部署；或由 **Nginx 同域托管** 前后端以避免跨域。
@@ -115,12 +115,12 @@ sudo mysql
 ```
 
 ```sql
-CREATE DATABASE IF NOT EXISTS quiz_atlas
+CREATE DATABASE IF NOT EXISTS ishua_atlas
   DEFAULT CHARACTER SET utf8mb4
   DEFAULT COLLATE utf8mb4_unicode_ci;
 
 CREATE USER 'quiz_app'@'localhost' IDENTIFIED BY '请替换为强密码';
-GRANT SELECT, INSERT, UPDATE, DELETE ON quiz_atlas.* TO 'quiz_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE, DELETE ON ishua_atlas.* TO 'quiz_app'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
@@ -131,8 +131,8 @@ FLUSH PRIVILEGES;
 在部署机上传仓库后：
 
 ```bash
-cd /opt/atlas/quiz-backend   # 你的部署路径
-mysql -u quiz_app -p quiz_atlas < sql/schema/init_core_tables.sql
+cd /opt/atlas/ishua-backend   # 你的部署路径
+mysql -u quiz_app -p ishua_atlas < sql/schema/init_core_tables.sql
 ```
 
 > **警告：** `init_core_tables.sql` 含 `DROP TABLE`，仅用于**首次**建库；已有数据环境请用迁移脚本，勿直接执行全量 DDL。
@@ -174,7 +174,7 @@ sudo systemctl enable redis-server
 
 ```bash
 sudo useradd -r -m -s /bin/bash atlas
-sudo mkdir -p /opt/atlas/quiz-backend
+sudo mkdir -p /opt/atlas/ishua-backend
 sudo mkdir -p /var/lib/atlas/upload
 sudo mkdir -p /var/log/atlas
 sudo chown -R atlas:atlas /opt/atlas /var/lib/atlas /var/log/atlas
@@ -192,7 +192,7 @@ sudo chown -R atlas:atlas /opt/atlas /var/lib/atlas /var/log/atlas
 |------|--------|----------|
 | `DB_HOST` | `127.0.0.1` | 本机 MySQL |
 | `DB_PORT` | `3306` | |
-| `DB_NAME` | `quiz_atlas` | |
+| `DB_NAME` | `ishua_atlas` | |
 | `DB_USER` | `root` | **改为 `quiz_app` 等专用账号** |
 | `DB_PASSWORD` | `root` | **强密码** |
 | `REDIS_HOST` | `127.0.0.1` | |
@@ -212,7 +212,7 @@ sudo chown -R atlas:atlas /opt/atlas /var/lib/atlas /var/log/atlas
 ### 8.3 systemd 环境文件
 
 ```bash
-sudo nano /etc/atlas/quiz-backend.env
+sudo nano /etc/atlas/ishua-backend.env
 ```
 
 示例（权限 600，属主 root:atlas 或 atlas:atlas）：
@@ -220,7 +220,7 @@ sudo nano /etc/atlas/quiz-backend.env
 ```bash
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_NAME=quiz_atlas
+DB_NAME=ishua_atlas
 DB_USER=quiz_app
 DB_PASSWORD=强密码
 
@@ -236,8 +236,8 @@ AI_IMPORT_TASK_TIMEOUT_MS=1800000
 ```
 
 ```bash
-sudo chmod 600 /etc/atlas/quiz-backend.env
-sudo chown root:atlas /etc/atlas/quiz-backend.env
+sudo chmod 600 /etc/atlas/ishua-backend.env
+sudo chown root:atlas /etc/atlas/ishua-backend.env
 ```
 
 ---
@@ -247,37 +247,37 @@ sudo chown root:atlas /etc/atlas/quiz-backend.env
 ### 9.1 在构建机打包
 
 ```bash
-git clone <你的仓库地址> quiz-backend
-cd quiz-backend
+git clone <你的仓库地址> ishua-backend
+cd ishua-backend
 mvn clean package -DskipTests
 ```
 
-产物：`target/quiz-backend-0.0.1-SNAPSHOT.jar`。
+产物：`target/ishua-backend-0.0.1-SNAPSHOT.jar`。
 
 ### 9.2 上传到服务器
 
 ```bash
-scp target/quiz-backend-0.0.1-SNAPSHOT.jar atlas@your-server:/opt/atlas/quiz-backend/
-scp -r sql atlas@your-server:/opt/atlas/quiz-backend/
+scp target/ishua-backend-0.0.1-SNAPSHOT.jar atlas@your-server:/opt/atlas/ishua-backend/
+scp -r sql atlas@your-server:/opt/atlas/ishua-backend/
 ```
 
 ### 9.3 目录布局建议
 
 ```text
-/opt/atlas/quiz-backend/
-  ├── quiz-backend-0.0.1-SNAPSHOT.jar
+/opt/atlas/ishua-backend/
+  ├── ishua-backend-0.0.1-SNAPSHOT.jar
   └── sql/
 
 /var/lib/atlas/upload/          # FILE_UPLOAD_DIR
 /var/log/atlas/                 # 应用日志（若重定向）
-/etc/atlas/quiz-backend.env     # 环境变量
+/etc/atlas/ishua-backend.env     # 环境变量
 ```
 
 ---
 
 ## 10. systemd：Java 后端
 
-创建 `/etc/systemd/system/quiz-backend.service`：
+创建 `/etc/systemd/system/ishua-backend.service`：
 
 ```ini
 [Unit]
@@ -289,14 +289,14 @@ Wants=mysql.service redis-server.service
 Type=simple
 User=atlas
 Group=atlas
-WorkingDirectory=/opt/atlas/quiz-backend
-EnvironmentFile=/etc/atlas/quiz-backend.env
-ExecStart=/usr/bin/java -jar /opt/atlas/quiz-backend/quiz-backend-0.0.1-SNAPSHOT.jar
+WorkingDirectory=/opt/atlas/ishua-backend
+EnvironmentFile=/etc/atlas/ishua-backend.env
+ExecStart=/usr/bin/java -jar /opt/atlas/ishua-backend/ishua-backend-0.0.1-SNAPSHOT.jar
 SuccessExitStatus=143
 Restart=on-failure
 RestartSec=5
-StandardOutput=append:/var/log/atlas/quiz-backend.log
-StandardError=append:/var/log/atlas/quiz-backend.err.log
+StandardOutput=append:/var/log/atlas/ishua-backend.log
+StandardError=append:/var/log/atlas/ishua-backend.err.log
 
 # 生产 JVM 示例（按内存调整）
 Environment=JAVA_OPTS=-Xms512m -Xmx1024m -XX:+UseG1GC
@@ -311,16 +311,16 @@ WantedBy=multi-user.target
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable quiz-backend
-sudo systemctl start quiz-backend
-sudo systemctl status quiz-backend
+sudo systemctl enable ishua-backend
+sudo systemctl start ishua-backend
+sudo systemctl status ishua-backend
 ```
 
 日志：
 
 ```bash
-sudo journalctl -u quiz-backend -f
-tail -f /var/log/atlas/quiz-backend.log
+sudo journalctl -u ishua-backend -f
+tail -f /var/log/atlas/ishua-backend.log
 ```
 
 ---
@@ -344,8 +344,8 @@ nano .env
 
 ```ini
 REDIS_URL=redis://:Redis强密码@127.0.0.1:6379/0
-REDIS_STREAM=quiz:task:stream
-REDIS_GROUP=quiz-ai-workers
+REDIS_STREAM=ishua:task:stream
+REDIS_GROUP=ishua-ai-workers
 REDIS_CONSUMER=worker_prod_1
 
 MINERU_TOKEN=生产令牌
@@ -354,7 +354,7 @@ LLM_BASE_URL=https://api.deepseek.com
 LLM_MODEL=deepseek-chat
 ```
 
-`REDIS_URL` 密码须与 `REDIS_PASSWORD` 一致。Stream 与消费组名称须与 Java `QuizRedisCacheConstants` 一致。
+`REDIS_URL` 密码须与 `REDIS_PASSWORD` 一致。Stream 与消费组名称须与 Java `IShuaRedisCacheConstants` 一致。
 
 ### 11.3 systemd 单元
 
@@ -363,7 +363,7 @@ LLM_MODEL=deepseek-chat
 ```ini
 [Unit]
 Description=Atlas AI Import Python Worker
-After=redis-server.service quiz-backend.service
+After=redis-server.service ishua-backend.service
 Wants=redis-server.service
 
 [Service]
@@ -428,7 +428,7 @@ sudo apt install -y nginx
 `/etc/nginx/sites-available/atlas-api`：
 
 ```nginx
-upstream quiz_backend {
+upstream ishua_backend {
     server 127.0.0.1:8080;
     keepalive 32;
 }
@@ -440,7 +440,7 @@ server {
     client_max_body_size 12m;   # 对齐 spring multipart max-request-size
 
     location / {
-        proxy_pass http://quiz_backend;
+        proxy_pass http://ishua_backend;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -499,7 +499,7 @@ sudo crontab -e
 ```
 
 ```cron
-0 3 * * * mysqldump -u quiz_app -p'密码' --single-transaction quiz_atlas | gzip > /var/backups/quiz_atlas_$(date +\%F).sql.gz
+0 3 * * * mysqldump -u quiz_app -p'密码' --single-transaction ishua_atlas | gzip > /var/backups/ishua_atlas_$(date +\%F).sql.gz
 ```
 
 确保 `/var/backups` 存在且权限安全。
@@ -522,7 +522,7 @@ sudo tar -czf /var/backups/atlas-upload-$(date +%F).tar.gz /var/lib/atlas/upload
 |------|----------|
 | MySQL | `sudo systemctl enable mysql` |
 | Redis | `sudo systemctl enable redis-server` |
-| Java | `sudo systemctl enable quiz-backend` |
+| Java | `sudo systemctl enable ishua-backend` |
 | Worker | `sudo systemctl enable atlas-ai-worker` |
 | Nginx | `sudo systemctl enable nginx` |
 
@@ -543,7 +543,7 @@ curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/v3/api-docs
 
 - [ ] 应用以 **atlas** 等非特权用户运行
 - [ ] `JWT_SECRET`、数据库与 Redis 密码为强随机值
-- [ ] `/etc/atlas/quiz-backend.env` 权限 **600**
+- [ ] `/etc/atlas/ishua-backend.env` 权限 **600**
 - [ ] MySQL、Redis **不监听公网**
 - [ ] 防火墙仅开放 SSH + 80/443
 - [ ] 修改 `CorsConfig` 为生产前端域或同域部署
@@ -556,20 +556,20 @@ curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/v3/api-docs
 
 ## 17. 功能验证
 
-1. `systemctl status quiz-backend` 为 active。
+1. `systemctl status ishua-backend` 为 active。
 2. 本机 `curl http://127.0.0.1:8080/v3/api-docs` 返回 JSON。
 3. 经 Nginx：`curl https://api.example.com/api/v1/question-banks/public`（若已配置域名）。
 4. 注册/登录获取 JWT，访问受保护接口。
 5. 启用 Worker 后提交 AI 导入，轮询任务至 `PARSED` 并可预览落库。
-6. `redis-cli -a <密码> XINFO GROUPS quiz:task:stream` 可见消费组 `quiz-ai-workers`。
+6. `redis-cli -a <密码> XINFO GROUPS ishua:task:stream` 可见消费组 `ishua-ai-workers`。
 
 ---
 
 ## 18. 常见问题
 
-### 18.1 quiz-backend 启动后立即退出
+### 18.1 ishua-backend 启动后立即退出
 
-- `journalctl -u quiz-backend -n 100` 查看栈追踪。
+- `journalctl -u ishua-backend -n 100` 查看栈追踪。
 - 常见原因：MySQL/Redis 未启动、密码错误、表未初始化。
 
 ### 18.2 无法连接 Redis
@@ -601,7 +601,7 @@ sudo chmod 750 /var/lib/atlas/upload
 ### 18.7 仅重启应用
 
 ```bash
-sudo systemctl restart quiz-backend
+sudo systemctl restart ishua-backend
 sudo systemctl restart atlas-ai-worker
 ```
 
@@ -614,11 +614,11 @@ sudo systemctl restart atlas-ai-worker
 | Spring Boot | 3.5.14（`pom.xml` parent） |
 | Java | 17 |
 | 默认 HTTP 端口 | 8080 |
-| 数据库名 | `quiz_atlas` |
+| 数据库名 | `ishua_atlas` |
 | JWT 过期 | `864000000` ms（10 天，`application.yaml`） |
-| Redis Stream | `quiz:task:stream` |
-| 消费组 | `quiz-ai-workers` |
-| 热点缓存 Key 前缀 | `smart_quiz:bank_detail:{bankId}` |
+| Redis Stream | `ishua:task:stream` |
+| 消费组 | `ishua-ai-workers` |
+| 热点缓存 Key 前缀 | `smart_ishua:bank_detail:{bankId}` |
 | 上传目录 | `FILE_UPLOAD_DIR`，默认 `./data/upload`，生产建议 `/var/lib/atlas/upload` |
 | Swagger | `/swagger-ui.html`、`/v3/api-docs` |
 | 鉴权白名单 | 注册/登录、公开题库列表、热点详情、Swagger 路径（见 `WebMvcConfig`） |

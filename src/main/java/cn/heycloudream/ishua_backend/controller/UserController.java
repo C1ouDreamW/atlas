@@ -1,0 +1,81 @@
+package cn.heycloudream.ishua_backend.controller;
+
+import cn.heycloudream.ishua_backend.common.vo.Result;
+import cn.heycloudream.ishua_backend.config.OpenApiConfig;
+import cn.heycloudream.ishua_backend.config.openapi.ApiDocPublicEndpoint;
+import cn.heycloudream.ishua_backend.config.openapi.ApiDocStandardResponses;
+import cn.heycloudream.ishua_backend.dto.user.UserLoginDTO;
+import cn.heycloudream.ishua_backend.dto.user.UserRegisterDTO;
+import cn.heycloudream.ishua_backend.service.UserService;
+import cn.heycloudream.ishua_backend.util.UserContextHolder;
+import cn.heycloudream.ishua_backend.vo.user.UserLoginVO;
+import cn.heycloudream.ishua_backend.vo.user.UserMeVO;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * 用户鉴权 REST 接口：注册与登录。
+ * <p>
+ * 路径在白名单中，不经过 JWT 拦截器。
+ * </p>
+ *
+ * @author C1ouD
+ */
+@RestController
+@RequestMapping("/api/v1/users")
+@RequiredArgsConstructor
+@Validated
+@Tag(name = "用户鉴权", description = "注册与登录无需 JWT；`GET /me` 须 JWT，最低角色 USER")
+@ApiDocStandardResponses
+public class UserController {
+
+    private final UserService userService;
+
+    @PostMapping("/register")
+    @ApiDocPublicEndpoint
+    @Operation(
+            summary = "用户注册",
+            description = """
+                    **无需登录。** 使用 BCrypt 加密存储密码；服务端固定角色为 `USER`，忽略请求体中的 `role` 字段。
+                    成功：code=200，data 为 null。
+                    失败：code=409 用户名已存在（含已逻辑删除账号）。
+                    """)
+    public Result<Void> register(@Valid @RequestBody UserRegisterDTO dto) {
+        userService.register(dto);
+        return Result.success(null);
+    }
+
+    @PostMapping("/login")
+    @ApiDocPublicEndpoint
+    @Operation(
+            summary = "用户登录",
+            description = """
+                    **无需登录。** 校验账号密码，成功返回 JWT 与用户信息（含 `role`：`USER` / `PREMIUM` / `ADMIN`）。
+                    失败：code=401 账号或密码错误。
+                    后续请求 Header：`Authorization: Bearer <token>`。
+                    """)
+    public Result<UserLoginVO> login(@Valid @RequestBody UserLoginDTO dto) {
+        return Result.success(userService.login(dto));
+    }
+
+    @GetMapping("/me")
+    @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
+    @Operation(
+            summary = "获取当前登录用户信息",
+            description = """
+                    须 JWT，最低角色 USER。返回 userId、username、nickname、role，供前端按角色渲染菜单。
+                    失败：code=401 未登录或 Token 无效。
+                    """)
+    public Result<UserMeVO> me() {
+        return Result.success(userService.getCurrentUser(UserContextHolder.get()));
+    }
+}

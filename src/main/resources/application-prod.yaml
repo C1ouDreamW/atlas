@@ -1,12 +1,12 @@
 spring:
   application:
-    name: quiz-backend
+    name: ishua-backend
   servlet:
     multipart:
       max-file-size: 10MB
       max-request-size: 12MB
   datasource:
-    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:quiz_atlas}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:ishua_atlas}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: ${DB_USER:root}
     password: ${DB_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -20,7 +20,10 @@ spring:
       repositories:
         enabled: false
 
-quiz:
+server:
+  port: 8080
+
+ishua:
   ai-import:
     rate-limit:
       max-requests-per-hour: ${AI_IMPORT_RATE_LIMIT_PER_HOUR:5}

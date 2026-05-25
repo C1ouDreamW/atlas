@@ -32,8 +32,8 @@ def _get_float(name: str, default: float) -> float:
 @dataclass(frozen=True)
 class Settings:
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-    redis_stream: str = os.getenv("REDIS_STREAM", "quiz:task:stream")
-    redis_group: str = os.getenv("REDIS_GROUP", "quiz-ai-workers")
+    redis_stream: str = os.getenv("REDIS_STREAM", "ishua:task:stream")
+    redis_group: str = os.getenv("REDIS_GROUP", "ishua-ai-workers")
     redis_consumer: str = os.getenv("REDIS_CONSUMER", "worker_node_1")
     redis_block_ms: int = _get_int("REDIS_BLOCK_MS", 5000)
 

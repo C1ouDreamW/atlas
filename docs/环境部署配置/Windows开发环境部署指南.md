@@ -1,6 +1,6 @@
 # Windows 开发环境部署指南
 
-本文档面向 **Windows 10/11** 本地开发机，帮助你在单机上一站式跑通 Atlas 后端（`quiz-backend`）。内容基于仓库真实配置：`application.yaml`、`pom.xml`、`sql/schema/init_core_tables.sql`、`CorsConfig`、`WebMvcConfig` 等。
+本文档面向 **Windows 10/11** 本地开发机，帮助你在单机上一站式跑通 Atlas 后端（`ishua-backend`）。内容基于仓库真实配置：`application.yaml`、`pom.xml`、`sql/schema/init_core_tables.sql`、`CorsConfig`、`WebMvcConfig` 等。
 
 同目录可参考：[Linux生产环境部署指南.md](./Linux生产环境部署指南.md)。
 
@@ -30,18 +30,18 @@
 
 ```text
 ┌─────────────────┐     HTTP :8080      ┌──────────────────────┐
-│  Vite 前端       │ ──────────────────► │  Java quiz-backend    │
+│  Vite 前端       │ ──────────────────► │  Java ishua-backend    │
 │  localhost:5173 │                     │  Spring Boot 3.5.x    │
 └─────────────────┘                     └──────────┬───────────┘
                                                  │
                     ┌────────────────────────────┼────────────────────────────┐
                     ▼                            ▼                            ▼
               MySQL 8.x                    Redis 7.x                  ./data/upload
-           (quiz_atlas)              Stream / 缓存 / 限流              上传文件落盘
+           (ishua_atlas)              Stream / 缓存 / 限流              上传文件落盘
                     ▲                            ▲
                     │                            │
                     └──────── transf-python Worker（可选）
-                         XREADGROUP quiz:task:stream
+                         XREADGROUP ishua:task:stream
                          MinerU API + DeepSeek API
 ```
 
@@ -122,7 +122,7 @@ mvn -v
 使用 **MySQL Workbench** 或命令行（需已加入 `Path`）：
 
 ```sql
-CREATE DATABASE IF NOT EXISTS quiz_atlas
+CREATE DATABASE IF NOT EXISTS ishua_atlas
   DEFAULT CHARACTER SET utf8mb4
   DEFAULT COLLATE utf8mb4_unicode_ci;
 ```
@@ -134,7 +134,7 @@ CREATE DATABASE IF NOT EXISTS quiz_atlas
 `application.yaml` 默认 JDBC URL：
 
 ```text
-jdbc:mysql://127.0.0.1:3306/quiz_atlas?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+jdbc:mysql://127.0.0.1:3306/ishua_atlas?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
 ```
 
 用户名/密码通过环境变量 `DB_USER`、`DB_PASSWORD` 注入，默认均为 `root`。
@@ -191,7 +191,7 @@ git status
 |------|--------|------|
 | `DB_HOST` | `127.0.0.1` | MySQL 地址 |
 | `DB_PORT` | `3306` | MySQL 端口 |
-| `DB_NAME` | `quiz_atlas` | 数据库名 |
+| `DB_NAME` | `ishua_atlas` | 数据库名 |
 | `DB_USER` | `root` | 数据库用户 |
 | `DB_PASSWORD` | `root` | 数据库密码 |
 | `REDIS_HOST` | `127.0.0.1` | Redis 地址 |
@@ -213,7 +213,7 @@ git status
 ```powershell
 $env:DB_HOST = "127.0.0.1"
 $env:DB_PORT = "3306"
-$env:DB_NAME = "quiz_atlas"
+$env:DB_NAME = "ishua_atlas"
 $env:DB_USER = "root"
 $env:DB_PASSWORD = "你的密码"
 
@@ -255,11 +255,11 @@ $env:FILE_UPLOAD_DIR = "D:\C1ouD\Shua\backend\data\upload"
 
 ```powershell
 cd D:\C1ouD\Shua\backend
-mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS quiz_atlas DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-mysql -u root -p quiz_atlas < sql\schema\init_core_tables.sql
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS ishua_atlas DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -u root -p ishua_atlas < sql\schema\init_core_tables.sql
 ```
 
-或在 MySQL Workbench 中打开 `sql/schema/init_core_tables.sql` 对 `quiz_atlas` 执行。
+或在 MySQL Workbench 中打开 `sql/schema/init_core_tables.sql` 对 `ishua_atlas` 执行。
 
 ### 10.2 初始化结果校验
 
@@ -273,7 +273,7 @@ mysql -u root -p quiz_atlas < sql\schema\init_core_tables.sql
 验证：
 
 ```sql
-USE quiz_atlas;
+USE ishua_atlas;
 SHOW TABLES;
 ```
 
@@ -293,7 +293,7 @@ cd D:\C1ouD\Shua\backend
 mvn clean install -DskipTests
 ```
 
-产物：`target\quiz-backend-0.0.1-SNAPSHOT.jar`（`pom.xml` 中 `artifactId` 为 `quiz-backend`）。
+产物：`target\ishua-backend-0.0.1-SNAPSHOT.jar`（`pom.xml` 中 `artifactId` 为 `ishua-backend`）。
 
 ### 11.2 开发启动（推荐）
 
@@ -307,7 +307,7 @@ mvn spring-boot:run
 
 ```powershell
 mvn package -DskipTests
-java -jar target\quiz-backend-0.0.1-SNAPSHOT.jar
+java -jar target\ishua-backend-0.0.1-SNAPSHOT.jar
 ```
 
 ### 11.4 运行单元测试
@@ -335,7 +335,7 @@ mvn test
 
 ### 12.3 运行配置
 
-- Main class：`cn.heycloudream.quiz_backend.QuizBackendApplication`
+- Main class：`cn.heycloudream.ishua_backend.IShuaBackendApplication`
 - **Environment variables**：填入第 9 节变量（或勾选「从系统环境继承」）。
 - **Working directory**：仓库根目录（保证 `./data/upload` 相对路径正确）。
 
@@ -411,8 +411,8 @@ pip install -r requirements.txt
 
 ```ini
 REDIS_URL=redis://127.0.0.1:6379/0
-REDIS_STREAM=quiz:task:stream
-REDIS_GROUP=quiz-ai-workers
+REDIS_STREAM=ishua:task:stream
+REDIS_GROUP=ishua-ai-workers
 REDIS_CONSUMER=worker_node_1
 
 MINERU_TOKEN=你的MinerU令牌
@@ -426,7 +426,7 @@ LLM_MODEL=deepseek-chat
 SKIP_LLM=false
 ```
 
-与 Java 端对齐的 Redis 约定见 `QuizRedisCacheConstants`：Stream `quiz:task:stream`，消费组 `quiz-ai-workers`。
+与 Java 端对齐的 Redis 约定见 `IShuaRedisCacheConstants`：Stream `ishua:task:stream`，消费组 `ishua-ai-workers`。
 
 ### 15.4 启动 Worker
 
@@ -449,9 +449,9 @@ python main.py
 1. **健康启动**：`mvn spring-boot:run` 无报错，8080 可访问。
 2. **Swagger**：打开 swagger-ui，调用 `POST /api/v1/users/register` 注册用户。
 3. **登录**：`POST /api/v1/users/login` 获取 token，Authorize 填入 Bearer。
-4. **题库**：创建私有题库、增删改试题（写操作会驱逐热点缓存 `smart_quiz:bank_detail:{id}`）。
+4. **题库**：创建私有题库、增删改试题（写操作会驱逐热点缓存 `smart_ishua:bank_detail:{id}`）。
 5. **公开大厅**：未登录访问 `GET /api/v1/question-banks/public`。
-6. **Redis**：`redis-cli KEYS "smart_quiz:*"` 在访问热点公开题库后可看到缓存 Key（可选）。
+6. **Redis**：`redis-cli KEYS "smart_ishua:*"` 在访问热点公开题库后可看到缓存 Key（可选）。
 7. **AI 导入（可选）**：上传文件 → 轮询任务状态 → 预览 → 批量确认落库；Worker 日志无持续报错。
 
 ---
@@ -462,7 +462,7 @@ python main.py
 
 - 确认 MySQL 服务已启动（服务管理器中的 MySQL80）。
 - 核对 `DB_*` 环境变量与账号密码。
-- 确认已创建库 `quiz_atlas` 且执行过 DDL。
+- 确认已创建库 `ishua_atlas` 且执行过 DDL。
 
 ### 17.2 启动报错：Unable to connect to Redis
 
@@ -470,7 +470,7 @@ python main.py
 - WSL Redis 需在 WSL 内 `sudo service redis-server start`。
 - 若设置了密码，必须配置 `REDIS_PASSWORD`。
 
-### 17.3 表不存在 / Table 'quiz_atlas.xxx' doesn't exist
+### 17.3 表不存在 / Table 'ishua_atlas.xxx' doesn't exist
 
 人工执行 `sql/schema/init_core_tables.sql`（见第 10 节）。
 
