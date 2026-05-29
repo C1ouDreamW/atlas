@@ -3,6 +3,7 @@ package cn.heycloudream.ishua_backend.service;
 import cn.heycloudream.ishua_backend.dto.practice.AnswerSubmitDTO;
 import cn.heycloudream.ishua_backend.vo.practice.AnswerSubmitResultVO;
 import cn.heycloudream.ishua_backend.vo.practice.PracticeQuestionVO;
+import cn.heycloudream.ishua_backend.vo.practice.PracticeReferenceAnswerVO;
 
 import java.util.List;
 
@@ -40,4 +41,14 @@ public interface PracticeService {
      * @return 判分结果
      */
     AnswerSubmitResultVO submitAnswer(Long userId, Long bankId, Long questionId, AnswerSubmitDTO dto);
+
+    /**
+     * 查看简答题参考答案（不接收用户答案、不判分、不写错题本）。
+     *
+     * @param userId     当前用户 ID
+     * @param bankId     题库 ID
+     * @param questionId 试题 ID
+     * @return 参考答案与解析
+     */
+    PracticeReferenceAnswerVO revealReferenceAnswer(Long userId, Long bankId, Long questionId);
 }

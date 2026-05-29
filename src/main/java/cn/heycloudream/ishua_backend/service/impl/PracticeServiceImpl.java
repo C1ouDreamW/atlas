@@ -13,6 +13,7 @@ import cn.heycloudream.ishua_backend.service.guard.BankAccessGuard;
 import cn.heycloudream.ishua_backend.util.UserContextHolder;
 import cn.heycloudream.ishua_backend.vo.practice.AnswerSubmitResultVO;
 import cn.heycloudream.ishua_backend.vo.practice.PracticeQuestionVO;
+import cn.heycloudream.ishua_backend.vo.practice.PracticeReferenceAnswerVO;
 import cn.heycloudream.ishua_backend.vo.question.QuestionVO;
 import cn.heycloudream.ishua_backend.vo.questionbank.QuestionBankDetailBundleVO;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -31,7 +32,8 @@ import java.util.stream.Collectors;
  * 刷题业务服务实现。
  * <p>
  * 拉题策略：公开题库复用 {@link QuestionBankHotDetailService}（带 Redis 缓存），私有题库归属校验后直接查 DB。
- * 判分策略：SINGLE/JUDGE 比较首个答案（忽略大小写）；MULTI 排序后全量比较；其他题型标记需人工判分。
+ * 判分策略：SINGLE/JUDGE 比较首个答案（忽略大小写）；MULTI 排序后全量比较；
+ * SHORT_ANSWER 不判分，通过 {@link #revealReferenceAnswer} 查看参考答案。
  * </p>
  *
  * @author C1ouD
@@ -77,27 +79,14 @@ public class PracticeServiceImpl implements PracticeService {
 
     @Override
     public AnswerSubmitResultVO submitAnswer(Long userId, Long bankId, Long questionId, AnswerSubmitDTO dto) {
-        // 查试题
-        Question question = questionService.getById(questionId);
-        if (question == null) {
-            throw new BusinessException(404, "试题不存在");
-        }
-        if (!bankId.equals(question.getQuestionBankId())) {
-            throw new BusinessException(400, "试题不属于该题库");
+        Question question = requireQuestionForPractice(userId, bankId, questionId);
+
+        if (isShortAnswerType(question.getQuestionType())) {
+            throw new BusinessException(400, "简答题不支持提交判分，请使用 GET .../reference 查看参考答案");
         }
 
-        // 校验访问权限：公开题库无需归属校验；私有题库需要
-        QuestionBank bank = requireExistsBank(bankId);
-        if (!isPublic(bank)) {
-            bankAccessGuard.requirePrivatePracticeAccess(userId, UserContextHolder.getRole(), bank);
-        }
-
-        // 判分
         String questionType = question.getQuestionType();
-        boolean isObjective = isObjectiveType(questionType);
-
-        if (!isObjective) {
-            // 主观题或未知题型，标记需人工判分
+        if (!isObjectiveType(questionType)) {
             return AnswerSubmitResultVO.builder()
                     .questionId(questionId)
                     .correct(null)
@@ -112,7 +101,6 @@ public class PracticeServiceImpl implements PracticeService {
             try {
                 wrongQuestionService.recordWrong(userId, questionId);
             } catch (Exception e) {
-                // 错题记录写入失败不影响判分结果返回，仅日志告警
                 log.warn("[刷题] 写入错题本失败 userId={} questionId={}", userId, questionId, e);
             }
         }
@@ -121,6 +109,20 @@ public class PracticeServiceImpl implements PracticeService {
                 .questionId(questionId)
                 .correct(correct)
                 .needsManualGrading(false)
+                .answerJson(question.getAnswerJson())
+                .analysis(question.getAnalysis())
+                .build();
+    }
+
+    @Override
+    public PracticeReferenceAnswerVO revealReferenceAnswer(Long userId, Long bankId, Long questionId) {
+        Question question = requireQuestionForPractice(userId, bankId, questionId);
+        if (!isShortAnswerType(question.getQuestionType())) {
+            throw new BusinessException(400, "仅简答题支持查看参考答案，客观题请使用提交判分接口");
+        }
+        return PracticeReferenceAnswerVO.builder()
+                .questionId(questionId)
+                .questionType(question.getQuestionType())
                 .answerJson(question.getAnswerJson())
                 .analysis(question.getAnalysis())
                 .build();
@@ -166,14 +168,33 @@ public class PracticeServiceImpl implements PracticeService {
     }
 
     /**
-     * 判断是否为可自动判分的客观题类型。
+     * 判断是否为简答题（不判分，仅查看参考答案）。
      */
+    private boolean isShortAnswerType(String questionType) {
+        return questionType != null && "SHORT_ANSWER".equalsIgnoreCase(questionType.trim());
+    }
+
     private boolean isObjectiveType(String questionType) {
         if (questionType == null) {
             return false;
         }
         String upper = questionType.toUpperCase();
         return "SINGLE".equals(upper) || "MULTI".equals(upper) || "JUDGE".equals(upper);
+    }
+
+    private Question requireQuestionForPractice(Long userId, Long bankId, Long questionId) {
+        Question question = questionService.getById(questionId);
+        if (question == null) {
+            throw new BusinessException(404, "试题不存在");
+        }
+        if (!bankId.equals(question.getQuestionBankId())) {
+            throw new BusinessException(400, "试题不属于该题库");
+        }
+        QuestionBank bank = requireExistsBank(bankId);
+        if (!isPublic(bank)) {
+            bankAccessGuard.requirePrivatePracticeAccess(userId, UserContextHolder.getRole(), bank);
+        }
+        return question;
     }
 
     private QuestionBank requireExistsBank(Long bankId) {

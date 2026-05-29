@@ -19,7 +19,10 @@ public enum QuestionType {
     MULTI,
 
     @Schema(description = "判断题；答案为 [\"T\"]（对）或 [\"F\"]（错）；选项固定为 [\"正确\",\"错误\"]")
-    JUDGE;
+    JUDGE,
+
+    @Schema(description = "简答题；options 为 []，answer 为文本要点数组；不自动判分，刷题时通过 reference 接口查看参考答案")
+    SHORT_ANSWER;
 
     public static boolean isValidCode(String code) {
         if (code == null || code.isBlank()) {

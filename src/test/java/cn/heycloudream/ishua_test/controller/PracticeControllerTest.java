@@ -11,6 +11,7 @@ import cn.heycloudream.ishua_backend.support.MockMvcTestSupport;
 import cn.heycloudream.ishua_backend.support.WebMvcAuthTestSupport;
 import cn.heycloudream.ishua_backend.vo.practice.AnswerSubmitResultVO;
 import cn.heycloudream.ishua_backend.vo.practice.PracticeQuestionVO;
+import cn.heycloudream.ishua_backend.vo.practice.PracticeReferenceAnswerVO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -106,5 +107,25 @@ class PracticeControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.correct").value(true));
+    }
+
+    @Test
+    @DisplayName("GET reference: 成功 → code=200")
+    void revealReferenceAnswer_success_shouldReturn200() throws Exception {
+        WebMvcAuthTestSupport.stubBasicUser(sysUserMapper, 1L);
+        when(practiceService.revealReferenceAnswer(1L, 1L, 10L))
+                .thenReturn(PracticeReferenceAnswerVO.builder()
+                        .questionId(10L)
+                        .questionType("SHORT_ANSWER")
+                        .answerJson("[\"要点一\"]")
+                        .analysis("解析")
+                        .build());
+
+        mockMvc.perform(MockMvcTestSupport.withBearerAuth(
+                        get("/api/v1/practice/banks/1/questions/10/reference"), 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.questionType").value("SHORT_ANSWER"))
+                .andExpect(jsonPath("$.data.answerJson").value("[\"要点一\"]"));
     }
 }

@@ -33,7 +33,7 @@ public class PracticeQuestionVO {
     private String stem;
 
     @Schema(
-            description = "选项 JSON 数组字符串，如 [\"TCP\",\"UDP\"]；判断题为 []",
+            description = "选项 JSON 数组字符串，如 [\"TCP\",\"UDP\"]；简答题（SHORT_ANSWER）为 []",
             example = "[\"TCP\",\"UDP\",\"IP\",\"ICMP\"]")
     private String optionsJson;
 

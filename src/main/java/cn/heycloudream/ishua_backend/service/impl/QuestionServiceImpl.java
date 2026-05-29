@@ -15,6 +15,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -135,6 +136,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     @Transactional(rollbackFor = Exception.class)
     public Long createQuestionInBank(Long currentUserId, Long bankId, QuestionUpdateDTO body) {
         bankAccessGuard.requireOwnedBank(currentUserId, bankId);
+        validateQuestionPayload(body.getQuestionType(), body.getOptionsJson(), body.getAnswerJson());
         LocalDateTime now = LocalDateTime.now();
         Question entity = Question.builder()
                 .questionBankId(bankId)
@@ -162,6 +164,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             throw new BusinessException(404, "试题不存在或无权访问");
         }
         bankAccessGuard.requireOwnedBank(currentUserId, q.getQuestionBankId());
+        validateQuestionPayload(dto.getQuestionType(), dto.getOptionsJson(), dto.getAnswerJson());
         q.setQuestionType(dto.getQuestionType().trim());
         q.setStem(dto.getStem().trim());
         q.setOptionsJson(dto.getOptionsJson());
@@ -236,6 +239,29 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             return 1;
         }
         return max.getSortNo() + 1;
+    }
+
+    private void validateQuestionPayload(String questionType, String optionsJson, String answerJson) {
+        if (questionType == null || !"SHORT_ANSWER".equalsIgnoreCase(questionType.trim())) {
+            return;
+        }
+        List<String> options = parseJsonStringList(optionsJson, "选项 JSON");
+        if (!options.isEmpty()) {
+            throw new BusinessException(400, "简答题 optionsJson 须为 []");
+        }
+        List<String> answers = parseJsonStringList(answerJson, "答案 JSON");
+        if (answers.isEmpty() || answers.stream().anyMatch(a -> a == null || a.isBlank())) {
+            throw new BusinessException(400, "简答题 answerJson 须为非空文本数组");
+        }
+    }
+
+    private List<String> parseJsonStringList(String json, String fieldName) {
+        try {
+            List<String> list = objectMapper.readValue(json, new TypeReference<List<String>>() {});
+            return list == null ? List.of() : list;
+        } catch (JsonProcessingException e) {
+            throw new BusinessException(400, fieldName + " 格式非法");
+        }
     }
 
     private QuestionVO toVo(Question e) {

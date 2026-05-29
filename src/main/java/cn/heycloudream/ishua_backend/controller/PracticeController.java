@@ -8,6 +8,7 @@ import cn.heycloudream.ishua_backend.service.PracticeService;
 import cn.heycloudream.ishua_backend.util.UserContextHolder;
 import cn.heycloudream.ishua_backend.vo.practice.AnswerSubmitResultVO;
 import cn.heycloudream.ishua_backend.vo.practice.PracticeQuestionVO;
+import cn.heycloudream.ishua_backend.vo.practice.PracticeReferenceAnswerVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -51,7 +52,8 @@ public class PracticeController {
                     - **公开题库**（is_public=1）：任意登录用户可刷，复用 Redis 热点缓存。
                     - **私有题库**：仅 PREMIUM 且为题库所有者可刷；USER 刷他人或任意私有库 → code=403；ADMIN 可 bypass。
                     - `random=true` 时随机打乱题目顺序。
-                    答案与解析在提交接口（`POST .../submit`）后返回。
+                    - **客观题**（SINGLE/MULTI/JUDGE）：提交后判分，见 `POST .../submit`。
+                    - **简答题**（SHORT_ANSWER）：`optionsJson` 为 `[]`，用户在前端本地作答，点「显示答案」时调 `GET .../reference`。
                     失败：code=404 题库不存在；code=403 私有库无权（含 USER 访问私有库）。
                     """)
     public Result<List<PracticeQuestionVO>> listPracticeQuestions(
@@ -72,7 +74,7 @@ public class PracticeController {
                     公开/私有题库访问规则同「获取刷题题目列表」。
                     - 客观题（SINGLE / MULTI / JUDGE）：自动判分，`correct` 为 true/false。
                     - 答错时自动将该题加入错题本（若已在错题本中则递增错误次数）。
-                    - 主观题或未知题型：`needsManualGrading=true`，`correct=null`，**不自动加入错题本**。
+                    - **简答题（SHORT_ANSWER）不支持本接口**，请使用 `GET .../reference`。
                     - 答案与解析在响应的 `answerJson`、`analysis` 字段中返回。
                     - 用户答案格式：单选/多选传大写字母列表如 `[\"A\"]`、`[\"A\",\"C\"]`；判断题传 `[\"T\"]` 或 `[\"F\"]`。
                     失败：code=404 题库/试题不存在；code=400 试题不属于该题库；code=403 私有库无权（USER 刷私有库或非所有者）。
@@ -85,6 +87,27 @@ public class PracticeController {
             @Valid @RequestBody AnswerSubmitDTO dto) {
         Long userId = UserContextHolder.get();
         AnswerSubmitResultVO result = practiceService.submitAnswer(userId, bankId, questionId, dto);
+        return Result.success(result);
+    }
+
+    @GetMapping("/banks/{bankId}/questions/{questionId}/reference")
+    @Operation(
+            summary = "查看简答题参考答案",
+            description = """
+                    须 JWT，最低角色 USER。仅适用于 **SHORT_ANSWER（简答题）**。
+                    - **不接收用户答案**，不判分，不写错题本，无副作用。
+                    - 用户在前端本地作答后，点击「显示答案」时调用本接口。
+                    - 返回 `answerJson`（JSON 数组字符串，每项为一个要点/段落）与 `analysis`。
+                    - 公开/私有题库访问规则同「获取刷题题目列表」。
+                    失败：code=404 题库/试题不存在；code=400 试题不属于该题库或非简答题；code=403 私有库无权。
+                    """)
+    public Result<PracticeReferenceAnswerVO> revealReferenceAnswer(
+            @Parameter(description = "题库 ID", required = true, example = "1001")
+            @PathVariable("bankId") Long bankId,
+            @Parameter(description = "试题 ID", required = true, example = "50001")
+            @PathVariable("questionId") Long questionId) {
+        Long userId = UserContextHolder.get();
+        PracticeReferenceAnswerVO result = practiceService.revealReferenceAnswer(userId, bankId, questionId);
         return Result.success(result);
     }
 }

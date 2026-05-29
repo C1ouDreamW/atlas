@@ -59,8 +59,8 @@ public class OpenApiConfig {
                 - 读接口（`QuestionVO` / 热点详情 / 管理端分页）：`optionsJson`、`answerJson` 类型为 **string**，
                   内容为 JSON 数组文本，前端需 `JSON.parse` 后使用。
                   - `optionsJson`：选项**文案**列表，如 `["TCP","UDP"]`；判断题为 `["正确","错误"]`
-                  - `answerJson`：单选/多选为选项**字母** `["A"]`、`["A","C"]`；判断题为 `["T"]` 或 `["F"]`
-                - 刷题拉题（`PracticeQuestionVO`）：**无** `answerJson`、`analysis`
+                  - `answerJson`：单选/多选为选项**字母** `["A"]`、`["A","C"]`；判断题为 `["T"]` 或 `["F"]`；简答题为文本要点数组如 `["要点一"]`
+                - 刷题拉题（`PracticeQuestionVO`）：**无** `answerJson`、`analysis`；简答题查看答案用 `GET /practice/banks/{bankId}/questions/{questionId}/reference`
                 - AI 预览/批量确认（`QuestionPreviewVO`）：`options`、`answer` 为 **string[]**，入库后读接口变为 JSON 字符串字段
                 - 题型 `questionType`：string，取值见 Schemas → `QuestionType` 枚举
 
@@ -72,6 +72,7 @@ public class OpenApiConfig {
                 | 题库内试题分页 | `PageResult` → `records[]` = `QuestionVO` |
                 | 刷题列表 | `PracticeQuestionVO[]` |
                 | 提交判分 | `AnswerSubmitResultVO` |
+                | 简答题参考答案 | `PracticeReferenceAnswerVO` |
                 | AI 任务状态 | `AiImportTaskStatusVO`（PARSED 时含 `questions[]`） |
                 | 错题本分页 | `PageResult` → `records[]` = `WrongQuestionVO` |
 

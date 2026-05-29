@@ -9,6 +9,7 @@ import cn.heycloudream.ishua_backend.service.guard.BankAccessGuard;
 import cn.heycloudream.ishua_backend.service.impl.PracticeServiceImpl;
 import cn.heycloudream.ishua_backend.vo.practice.AnswerSubmitResultVO;
 import cn.heycloudream.ishua_backend.vo.practice.PracticeQuestionVO;
+import cn.heycloudream.ishua_backend.vo.practice.PracticeReferenceAnswerVO;
 import cn.heycloudream.ishua_backend.vo.question.QuestionVO;
 import cn.heycloudream.ishua_backend.vo.questionbank.QuestionBankDetailBundleVO;
 import cn.heycloudream.ishua_backend.vo.questionbank.QuestionBankVO;
@@ -212,6 +213,46 @@ class PracticeServiceImplTest {
         AnswerSubmitResultVO result = practiceService.submitAnswer(USER_ID, BANK_ID, QUESTION_ID, dto);
 
         assertThat(result.getCorrect()).isFalse();
+    }
+
+    @Test
+    @DisplayName("submitAnswer: 简答题 → 抛 400")
+    void submitAnswer_shortAnswer_shouldThrow400() {
+        when(questionService.getById(QUESTION_ID)).thenReturn(buildQuestion("SHORT_ANSWER", "[\"参考答案\"]"));
+        when(questionBankMapper.selectById(BANK_ID)).thenReturn(publicBank());
+
+        AnswerSubmitDTO dto = AnswerSubmitDTO.builder().userAnswer(List.of("我的回答")).build();
+        assertThatThrownBy(() -> practiceService.submitAnswer(USER_ID, BANK_ID, QUESTION_ID, dto))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code")
+                .isEqualTo(400);
+        verify(wrongQuestionService, never()).recordWrong(any(), any());
+    }
+
+    @Test
+    @DisplayName("revealReferenceAnswer: 简答题 → 返回参考答案")
+    void revealReferenceAnswer_shortAnswer_shouldReturnReference() {
+        when(questionService.getById(QUESTION_ID)).thenReturn(buildQuestion("SHORT_ANSWER", "[\"要点一\",\"要点二\"]"));
+        when(questionBankMapper.selectById(BANK_ID)).thenReturn(publicBank());
+
+        PracticeReferenceAnswerVO result = practiceService.revealReferenceAnswer(USER_ID, BANK_ID, QUESTION_ID);
+
+        assertThat(result.getQuestionId()).isEqualTo(QUESTION_ID);
+        assertThat(result.getQuestionType()).isEqualTo("SHORT_ANSWER");
+        assertThat(result.getAnswerJson()).isEqualTo("[\"要点一\",\"要点二\"]");
+        assertThat(result.getAnalysis()).isEqualTo("解析文本");
+    }
+
+    @Test
+    @DisplayName("revealReferenceAnswer: 客观题 → 抛 400")
+    void revealReferenceAnswer_objective_shouldThrow400() {
+        when(questionService.getById(QUESTION_ID)).thenReturn(buildQuestion("SINGLE", "[\"A\"]"));
+        when(questionBankMapper.selectById(BANK_ID)).thenReturn(publicBank());
+
+        assertThatThrownBy(() -> practiceService.revealReferenceAnswer(USER_ID, BANK_ID, QUESTION_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code")
+                .isEqualTo(400);
     }
 
     @Test

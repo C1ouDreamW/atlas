@@ -34,12 +34,12 @@ public class QuestionVO {
     private String stem;
 
     @Schema(
-            description = "选项 JSON 数组字符串。单选/多选为选项文案列表，如 [\"TCP\",\"UDP\",\"IP\"]",
+            description = "选项 JSON 数组字符串。单选/多选为选项文案列表；简答题（SHORT_ANSWER）为 []",
             example = "[\"8.31 J/(mol·K)\",\"8.31 kJ/(mol·K)\",\"0.0821 L·atm/(mol·K)\"]")
     private String optionsJson;
 
     @Schema(
-            description = "答案 JSON 数组字符串。单选/多选为大写字母选项标，如 [\"A\"]、[\"A\",\"C\"]；判断题为 [\"T\"] 或 [\"F\"]",
+            description = "答案 JSON 数组字符串。单选/多选为字母；判断题为 [\"T\"]/[\"F\"]；简答题为文本要点数组",
             example = "[\"C\"]")
     private String answerJson;
 

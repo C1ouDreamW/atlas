@@ -15,7 +15,6 @@ import java.lang.annotation.Target;
 @Target({ElementType.TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface RequireRole {
-
     /**
      * 访问该接口所需的最低角色。
      */
