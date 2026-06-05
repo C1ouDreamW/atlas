@@ -7,7 +7,7 @@ import org.springframework.web.multipart.MultipartFile;
  * 智能题库导入：流程 A 生产者侧入口。
  * <p>
  * Java 仅负责文件落盘 + 写元数据 + 入 Redis Stream，
- * 文档解析与大模型调用全部由 AiParser Worker 完成。
+ * 文档解析与大模型调用全部由 ai-import-worker Worker 完成。
  * </p>
  *
  * @author C1ouD

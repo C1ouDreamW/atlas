@@ -26,7 +26,7 @@ import java.util.Set;
  * 智能导入门面：负责入参校验、归属权校验、文件落盘、写元数据、入 Redis Stream。
  * <p>
  * 严格遵循 docs/Background.md 中的流程 A：Java 仅作为生产者，
- * 文档解析（MinerU）与大模型调用全部交给 AiParser Worker。
+ * 文档解析（MinerU）与大模型调用全部交给 ai-import-worker Worker。
  * </p>
  *
  * @author C1ouD

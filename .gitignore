@@ -63,12 +63,12 @@ docs/
 ### JMeter ###
 jmeter/
 
-### AiParser ###
-AiParser/temp/
-AiParser/.venv/
-AiParser/__pycache__/
-AiParser/*.pyc
-AiParser/docs/
+### ai-import-worker ###
+ai-import-worker/temp/
+ai-import-worker/.venv/
+ai-import-worker/__pycache__/
+ai-import-worker/*.pyc
+ai-import-worker/docs/
 
 jmeter/
 
