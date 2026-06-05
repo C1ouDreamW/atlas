@@ -4,6 +4,7 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 *.class
+temp/
 
 ### 日志文件 ###
 *.log
@@ -47,30 +48,27 @@ build/
 ### github相关 ###
 .github/
 
-### cursor ###
+### Agent ###
 *.cursor
 .deepseek/
 .agents/
+.cursorrules
+AGENTS.md
 
 
 ### 测试题目文件 ###
 assets/
 docs/
-!docs/JMeter压测.md
-!docs/压测报告-*.md
-!docs/阶段六实行计划.md
-!docs/Docker部署.md
 
-### JMeter 压测产物 ###
-jmeter/results/
-jmeter/report/
+### JMeter ###
+jmeter/
 
-### transf-python ###
-transf-python/temp/
-transf-python/venv/
-transf-python/__pycache__/
-transf-python/*.pyc
-transf-python/docs/
+### AiParser ###
+AiParser/temp/
+AiParser/.venv/
+AiParser/__pycache__/
+AiParser/*.pyc
+AiParser/docs/
 
 jmeter/
 

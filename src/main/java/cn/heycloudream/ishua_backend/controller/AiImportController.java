@@ -43,7 +43,7 @@ import org.springframework.web.multipart.MultipartFile;
 /**
  * AI 智能导入控制器（流程 A 生产者侧 + 状态轮询）。
  * <p>
- * 文档解析与大模型调用由 transf-python Worker 完成，Java 仅负责落盘 / 入 Stream / 提供任务状态。
+ * 文档解析与大模型调用由 AiParser Worker 完成，Java 仅负责落盘 / 入 Stream / 提供任务状态。
  * </p>
  *
  * @author atlas
