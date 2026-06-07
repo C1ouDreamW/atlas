@@ -6,6 +6,7 @@ import cn.heycloudream.ishua_backend.dto.ai.AiImportTaskPageQueryDTO;
 import cn.heycloudream.ishua_backend.entity.AiImportTask;
 import cn.heycloudream.ishua_backend.enums.AiImportTaskStatus;
 import cn.heycloudream.ishua_backend.vo.admin.AdminAiImportCleanupResultVO;
+import cn.heycloudream.ishua_backend.vo.admin.AdminAiImportStatsVO;
 import cn.heycloudream.ishua_backend.vo.ai.AiImportTaskMetaVO;
 import cn.heycloudream.ishua_backend.vo.ai.AiImportTaskStatusVO;
 import cn.heycloudream.ishua_backend.vo.ai.AiImportTaskSummaryVO;
@@ -38,4 +39,6 @@ public interface AiImportTaskService {
     void markImported(String taskId, int importedCount);
 
     AdminAiImportCleanupResultVO cleanupStaleParsed(AdminAiImportCleanupDTO dto);
+
+    AdminAiImportStatsVO getStats(int periodDays);
 }

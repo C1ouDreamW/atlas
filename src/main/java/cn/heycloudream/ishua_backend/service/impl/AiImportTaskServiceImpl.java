@@ -10,7 +10,11 @@ import cn.heycloudream.ishua_backend.exception.BusinessException;
 import cn.heycloudream.ishua_backend.mapper.AiImportTaskMapper;
 import cn.heycloudream.ishua_backend.service.AiImportTaskService;
 import cn.heycloudream.ishua_backend.service.file.FileStorageService;
+import cn.heycloudream.ishua_backend.mapper.row.AiImportTaskOverallStatsRow;
+import cn.heycloudream.ishua_backend.mapper.row.AiImportTaskStatusAggRow;
 import cn.heycloudream.ishua_backend.vo.admin.AdminAiImportCleanupResultVO;
+import cn.heycloudream.ishua_backend.vo.admin.AdminAiImportStatsVO;
+import cn.heycloudream.ishua_backend.vo.admin.AdminAiImportStatusStatVO;
 import cn.heycloudream.ishua_backend.vo.ai.AiImportTaskMetaVO;
 import cn.heycloudream.ishua_backend.vo.ai.AiImportTaskStatusVO;
 import cn.heycloudream.ishua_backend.vo.ai.AiImportTaskSummaryVO;
@@ -33,8 +37,11 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -50,6 +57,9 @@ public class AiImportTaskServiceImpl implements AiImportTaskService {
     private static final int MAX_MESSAGE_CHARS = 500;
     private static final int DEFAULT_CLEANUP_DAYS = 7;
     private static final int DEFAULT_CLEANUP_BATCH = 200;
+    private static final int DEFAULT_STATS_PERIOD_DAYS = 30;
+    private static final int MIN_STATS_PERIOD_DAYS = 1;
+    private static final int MAX_STATS_PERIOD_DAYS = 365;
     private static final TypeReference<List<QuestionPreviewVO>> QUESTION_PREVIEW_LIST_TYPE = new TypeReference<>() {
     };
 
@@ -223,6 +233,59 @@ public class AiImportTaskServiceImpl implements AiImportTaskService {
                 .sampleTaskIds(sampleTaskIds)
                 .message("已清理 " + processed + " 个长时间未确认任务")
                 .build();
+    }
+
+    @Override
+    public AdminAiImportStatsVO getStats(int periodDays) {
+        int normalizedDays = normalizeStatsPeriodDays(periodDays);
+        LocalDateTime periodEnd = LocalDateTime.now();
+        LocalDateTime periodStart = periodEnd.minusDays(normalizedDays);
+
+        AiImportTaskOverallStatsRow overall = aiImportTaskMapper.selectOverallStatsSince(periodStart);
+        List<AiImportTaskStatusAggRow> statusRows = aiImportTaskMapper.selectStatusAggSince(periodStart);
+        Map<String, AiImportTaskStatusAggRow> rowByStatus = statusRows.stream()
+                .collect(Collectors.toMap(AiImportTaskStatusAggRow::getStatus, Function.identity(), (a, b) -> a));
+
+        List<AdminAiImportStatusStatVO> statusStats = EnumSet.allOf(AiImportTaskStatus.class).stream()
+                .map(status -> toStatusStat(status.name(), rowByStatus.get(status.name())))
+                .collect(Collectors.toList());
+
+        long totalTasks = overall == null || overall.getTotalCount() == null ? 0L : overall.getTotalCount();
+        long failedCount = overall == null || overall.getFailedCount() == null ? 0L : overall.getFailedCount();
+
+        return AdminAiImportStatsVO.builder()
+                .periodDays(normalizedDays)
+                .periodStart(periodStart)
+                .periodEnd(periodEnd)
+                .totalTasks(totalTasks)
+                .statusStats(statusStats)
+                .dailyAvgSubmitCount(totalTasks == 0L ? 0D : (double) totalTasks / normalizedDays)
+                .avgParseSeconds(overall == null ? null : overall.getAvgParseSec())
+                .avgQuestionCount(overall == null ? null : overall.getAvgQuestionCount())
+                .failureRate(totalTasks == 0L ? 0D : (double) failedCount / totalTasks)
+                .build();
+    }
+
+    private AdminAiImportStatusStatVO toStatusStat(String status, AiImportTaskStatusAggRow row) {
+        if (row == null) {
+            return AdminAiImportStatusStatVO.builder()
+                    .status(status)
+                    .count(0L)
+                    .avgParseSeconds(null)
+                    .build();
+        }
+        return AdminAiImportStatusStatVO.builder()
+                .status(status)
+                .count(row.getCnt() == null ? 0L : row.getCnt())
+                .avgParseSeconds(row.getAvgParseSec())
+                .build();
+    }
+
+    private static int normalizeStatsPeriodDays(int periodDays) {
+        if (periodDays < MIN_STATS_PERIOD_DAYS) {
+            return DEFAULT_STATS_PERIOD_DAYS;
+        }
+        return Math.min(periodDays, MAX_STATS_PERIOD_DAYS);
     }
 
     private void markParsed(String taskId, String message, List<QuestionPreviewVO> questions) {

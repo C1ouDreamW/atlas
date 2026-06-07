@@ -8,15 +8,21 @@ import cn.heycloudream.ishua_backend.dto.admin.AdminAiImportCleanupDTO;
 import cn.heycloudream.ishua_backend.enums.UserRole;
 import cn.heycloudream.ishua_backend.service.AiImportTaskService;
 import cn.heycloudream.ishua_backend.vo.admin.AdminAiImportCleanupResultVO;
+import cn.heycloudream.ishua_backend.vo.admin.AdminAiImportStatsVO;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -30,7 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @Tag(name = "管理端 AI 导入任务", description = """
         须 JWT，仅 ADMIN 可访问；USER/PREMIUM 调用返回 code=403。
-        用于运维：清理长时间处于 PARSED、用户未确认导入的解析草稿。
+        用于运维：导入任务统计看板、清理长时间处于 PARSED 且未确认导入的解析草稿。
         """)
 @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 @ApiDocStandardResponses
@@ -38,6 +44,35 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminAiImportController {
 
     private final AiImportTaskService aiImportTaskService;
+
+    @GetMapping("/stats")
+    @Operation(
+            summary = "AI 导入任务统计看板",
+            description = """
+                    须 JWT，**仅 ADMIN**。基于 MySQL 聚合 `ai_import_task` 表，统计近 N 天导入流水线运行情况。
+
+                    **查询参数**：
+                    - **days**（可选，默认 30）：统计窗口天数，范围 1~365；以 `submitted_at >= now - days` 为过滤条件
+
+                    **响应**（`AdminAiImportStatsVO`）：
+                    - **periodDays / periodStart / periodEnd**：统计窗口元数据
+                    - **totalTasks**：窗口内提交任务总数
+                    - **statusStats[]**：各状态任务数及该状态下的平均解析耗时（秒）
+                    - **dailyAvgSubmitCount**：日均提交量（totalTasks / periodDays）
+                    - **avgParseSeconds**：全量已解析任务的平均解析耗时（parsed_at − submitted_at）
+                    - **avgQuestionCount**：平均解析题目数
+                    - **failureRate**：失败率（FAILED / totalTasks，0~1）
+
+                    **失败**：code=401 未登录；code=403 非 ADMIN；code=400（days 越界）
+                    """)
+    public Result<AdminAiImportStatsVO> getStats(
+            @Parameter(description = "统计窗口天数，默认 30", example = "30")
+            @RequestParam(value = "days", defaultValue = "30")
+            @Min(value = 1, message = "统计天数至少为 1 天")
+            @Max(value = 365, message = "统计天数不能超过 365 天")
+            int days) {
+        return Result.success(aiImportTaskService.getStats(days));
+    }
 
     @PostMapping("/tasks/cleanup")
     @Operation(
