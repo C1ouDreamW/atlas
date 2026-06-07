@@ -43,6 +43,14 @@ def first_present(task: Dict[str, Any], *fields: str) -> str:
     return ""
 
 
+def build_pipeline_metrics(mineru_ms: int | None, llm_ms: int | None) -> Dict[str, int] | None:
+    if mineru_ms is None and llm_ms is None:
+        return None
+    mineru = mineru_ms or 0
+    llm = llm_ms or 0
+    return {"mineruMs": mineru, "llmMs": llm, "pipelineMs": mineru + llm}
+
+
 def infer_file_type(*candidates: str) -> str:
     for candidate in candidates:
         if not candidate:
@@ -63,6 +71,8 @@ def process_task(
     task: Dict[str, Any],
 ) -> None:
     task_id = str(task.get("taskId") or "")
+    mineru_ms: int | None = None
+    llm_ms: int | None = None
 
     try:
         task_id = require_task_field(task, "taskId")
@@ -84,12 +94,14 @@ def process_task(
                 file_type = infer_file_type(file_name, file_url)
             debug_dir = create_task_debug_dir(task_id) if settings.debug_mode else None
 
+            mineru_started = time.monotonic()
             markdown = mineru_client.extract_markdown(
                 file_url=file_url,
                 task_id=task_id,
                 file_type=file_type,
                 debug_dir=debug_dir,
             )
+            mineru_ms = int((time.monotonic() - mineru_started) * 1000)
             if settings.debug_mode and debug_dir is not None:
                 save_debug_text(
                     debug_dir / "markdown.md",
@@ -101,13 +113,17 @@ def process_task(
             if settings.skip_llm:
                 logger.info("SKIP_LLM enabled, skipping LLM extraction task_id=%s", task_id)
                 questions = []
+                llm_ms = 0
             else:
+                llm_started = time.monotonic()
                 questions = llm_client.extract_questions(
                     markdown,
                     task_id=task_id,
                     debug_dir=debug_dir,
                 )
-            redis_manager.set_parsed(task_id, questions)
+                llm_ms = int((time.monotonic() - llm_started) * 1000)
+            metrics = build_pipeline_metrics(mineru_ms, llm_ms)
+            redis_manager.set_parsed(task_id, questions, metrics=metrics)
         redis_manager.ack(message_id)
         logger.info("Task parsed and ACKed task_id=%s message_id=%s questions=%s", task_id, message_id, len(questions))
     except Exception as exc:
@@ -115,7 +131,7 @@ def process_task(
         if task_id:
             try:
                 reason = str(exc).strip() or exc.__class__.__name__
-                redis_manager.set_failed(task_id, reason)
+                redis_manager.set_failed(task_id, reason, metrics=build_pipeline_metrics(mineru_ms, llm_ms))
             except Exception:
                 logger.exception("Failed to update FAILED status task_id=%s", task_id)
         try:

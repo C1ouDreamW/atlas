@@ -56,6 +56,12 @@ public class AiImportTask {
 
     private LocalDateTime expiredAt;
 
+    private Integer mineruDurationMs;
+
+    private Integer llmDurationMs;
+
+    private Integer pipelineDurationMs;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;

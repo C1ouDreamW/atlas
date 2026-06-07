@@ -57,9 +57,11 @@ public class AdminAiImportController {
                     **响应**（`AdminAiImportStatsVO`）：
                     - **periodDays / periodStart / periodEnd**：统计窗口元数据
                     - **totalTasks**：窗口内提交任务总数
-                    - **statusStats[]**：各状态任务数及该状态下的平均解析耗时（秒）
+                    - **statusStats[]**：各状态任务数及该状态下的平均流水线耗时（秒，Worker 实测 pipeline_duration_ms）
                     - **dailyAvgSubmitCount**：日均提交量（totalTasks / periodDays）
-                    - **avgParseSeconds**：全量已解析任务的平均解析耗时（parsed_at − submitted_at）
+                    - **avgPipelineSeconds**：MinerU + LLM 平均总耗时（秒）
+                    - **avgMineruSeconds** / **avgLlmSeconds**：分项平均耗时（秒）
+                    - **avgParseSeconds**：同 avgPipelineSeconds（兼容字段）
                     - **avgQuestionCount**：平均解析题目数
                     - **failureRate**：失败率（FAILED / totalTasks，0~1）
 

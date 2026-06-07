@@ -43,8 +43,19 @@ public class AdminAiImportStatsVO {
     private Double dailyAvgSubmitCount;
 
     @Schema(
-            description = "全量已解析任务的平均解析耗时（秒，parsed_at − submitted_at）",
-            example = "22.3")
+            description = "Worker 实测流水线平均耗时（秒，MinerU + LLM）；无 pipeline_duration_ms 的历史任务不参与",
+            example = "128.5")
+    private Double avgPipelineSeconds;
+
+    @Schema(description = "MinerU 平均耗时（秒）", example = "120.0")
+    private Double avgMineruSeconds;
+
+    @Schema(description = "LLM 平均耗时（秒）", example = "8.5")
+    private Double avgLlmSeconds;
+
+    @Schema(
+            description = "同 avgPipelineSeconds，保留兼容",
+            example = "128.5")
     private Double avgParseSeconds;
 
     @Schema(description = "平均解析题目数（question_count 非空记录的平均值）", example = "15.6")

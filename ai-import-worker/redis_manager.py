@@ -82,7 +82,12 @@ class RedisManager:
         vo = self._status_vo(task_id, "PROCESSING")
         self._write_status_unless_terminal(task_id, vo)
 
-    def set_parsed(self, task_id: str, previews: List[Dict[str, Any]]) -> None:
+    def set_parsed(
+        self,
+        task_id: str,
+        previews: List[Dict[str, Any]],
+        metrics: Optional[Dict[str, int]] = None,
+    ) -> None:
         result_json = json.dumps(previews, ensure_ascii=False, separators=(",", ":"))
         message = None
         if not previews:
@@ -92,6 +97,7 @@ class RedisManager:
             "PARSED",
             message=message,
             total_count=len(previews),
+            metrics=metrics,
         )
         # 结果数据无终态保护（IMPORTED 时 Java 端会 delete 掉，PARSED 写入也无害）
         self.client.set(self._result_key(task_id), result_json, ex=RESULT_TTL_SECONDS)
@@ -103,8 +109,13 @@ class RedisManager:
                 task_id,
             )
 
-    def set_failed(self, task_id: str, reason: str = "任务处理失败") -> None:
-        vo = self._status_vo(task_id, "FAILED", message=self._truncate(reason))
+    def set_failed(
+        self,
+        task_id: str,
+        reason: str = "任务处理失败",
+        metrics: Optional[Dict[str, int]] = None,
+    ) -> None:
+        vo = self._status_vo(task_id, "FAILED", message=self._truncate(reason), metrics=metrics)
         # FAILED 也走终态保护：若 Java 已 IMPORTED 终态，Worker 不应回退；若已是 FAILED 则等价于幂等
         self._write_status_unless_terminal(task_id, vo)
 
@@ -160,14 +171,18 @@ class RedisManager:
         status: str,
         message: Optional[str] = None,
         total_count: Optional[int] = None,
+        metrics: Optional[Dict[str, int]] = None,
     ) -> Dict[str, Any]:
-        return {
+        vo: Dict[str, Any] = {
             "taskId": task_id,
             "status": status,
             "message": message,
             "totalCount": total_count,
             "questions": None,
         }
+        if metrics:
+            vo["metrics"] = metrics
+        return vo
 
     @staticmethod
     def _truncate(message: str) -> str:

@@ -25,7 +25,7 @@ public class AdminAiImportStatusStatVO {
     private Long count;
 
     @Schema(
-            description = "该状态下已解析任务的平均解析耗时（秒，parsed_at − submitted_at）；无 parsed_at 的记录不参与计算",
+            description = "该状态下任务的平均流水线耗时（秒，pipeline_duration_ms）；无实测数据时不参与计算",
             example = "18.5")
     private Double avgParseSeconds;
 }

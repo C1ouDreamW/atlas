@@ -25,7 +25,7 @@ public interface AiImportTaskMapper extends BaseMapper<AiImportTask> {
     @Select("""
             SELECT status,
                    COUNT(*) AS cnt,
-                   AVG(TIMESTAMPDIFF(SECOND, submitted_at, parsed_at)) AS avg_parse_sec
+                   AVG(pipeline_duration_ms) / 1000 AS avg_parse_sec
             FROM ai_import_task
             WHERE is_deleted = 0
               AND submitted_at >= #{periodStart}
@@ -38,7 +38,9 @@ public interface AiImportTaskMapper extends BaseMapper<AiImportTask> {
      */
     @Select("""
             SELECT COUNT(*) AS total_count,
-                   AVG(TIMESTAMPDIFF(SECOND, submitted_at, parsed_at)) AS avg_parse_sec,
+                   AVG(pipeline_duration_ms) / 1000 AS avg_pipeline_sec,
+                   AVG(mineru_duration_ms) / 1000 AS avg_mineru_sec,
+                   AVG(llm_duration_ms) / 1000 AS avg_llm_sec,
                    AVG(question_count) AS avg_question_count,
                    SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) AS failed_count
             FROM ai_import_task

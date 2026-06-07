@@ -16,6 +16,7 @@ import cn.heycloudream.ishua_backend.vo.admin.AdminAiImportCleanupResultVO;
 import cn.heycloudream.ishua_backend.vo.admin.AdminAiImportStatsVO;
 import cn.heycloudream.ishua_backend.vo.admin.AdminAiImportStatusStatVO;
 import cn.heycloudream.ishua_backend.vo.ai.AiImportTaskMetaVO;
+import cn.heycloudream.ishua_backend.vo.ai.AiImportTaskPipelineMetricsVO;
 import cn.heycloudream.ishua_backend.vo.ai.AiImportTaskStatusVO;
 import cn.heycloudream.ishua_backend.vo.ai.AiImportTaskSummaryVO;
 import cn.heycloudream.ishua_backend.vo.ai.QuestionPreviewVO;
@@ -153,17 +154,30 @@ public class AiImportTaskServiceImpl implements AiImportTaskService {
             return;
         }
         AiImportTaskStatus target = AiImportTaskStatus.valueOf(statusVO.getStatus());
-        if (target == AiImportTaskStatus.PARSED && questions != null && !questions.isEmpty()) {
-            markParsed(taskId, statusVO.getMessage(), questions);
+        AiImportTaskPipelineMetricsVO metrics = statusVO.getMetrics();
+        if (target == AiImportTaskStatus.PARSED) {
+            List<QuestionPreviewVO> preview = questions != null ? questions : List.of();
+            markParsed(taskId, statusVO.getMessage(), preview, metrics);
             return;
         }
-        markStatus(taskId, target, statusVO.getMessage(), statusVO.getTotalCount());
+        syncMarkStatus(taskId, target, statusVO.getMessage(), statusVO.getTotalCount(), metrics);
+    }
+
+    private void syncMarkStatus(
+            String taskId,
+            AiImportTaskStatus target,
+            String message,
+            Integer questionCount,
+            AiImportTaskPipelineMetricsVO metrics) {
+        findByTaskId(taskId).ifPresent(task ->
+                updateStatusIfAllowed(task, target, message, questionCount, null, metrics));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void markStatus(String taskId, AiImportTaskStatus target, String message, Integer questionCount) {
-        findByTaskId(taskId).ifPresent(task -> updateStatusIfAllowed(task, target, message, questionCount, null));
+        findByTaskId(taskId).ifPresent(task ->
+                updateStatusIfAllowed(task, target, message, questionCount, null, null));
     }
 
     @Override
@@ -174,6 +188,7 @@ public class AiImportTaskServiceImpl implements AiImportTaskService {
                 AiImportTaskStatus.IMPORTED,
                 "已导入 " + importedCount + " 道题",
                 importedCount,
+                null,
                 null));
     }
 
@@ -260,7 +275,10 @@ public class AiImportTaskServiceImpl implements AiImportTaskService {
                 .totalTasks(totalTasks)
                 .statusStats(statusStats)
                 .dailyAvgSubmitCount(totalTasks == 0L ? 0D : (double) totalTasks / normalizedDays)
-                .avgParseSeconds(overall == null ? null : overall.getAvgParseSec())
+                .avgPipelineSeconds(overall == null ? null : overall.getAvgPipelineSec())
+                .avgMineruSeconds(overall == null ? null : overall.getAvgMineruSec())
+                .avgLlmSeconds(overall == null ? null : overall.getAvgLlmSec())
+                .avgParseSeconds(overall == null ? null : overall.getAvgPipelineSec())
                 .avgQuestionCount(overall == null ? null : overall.getAvgQuestionCount())
                 .failureRate(totalTasks == 0L ? 0D : (double) failedCount / totalTasks)
                 .build();
@@ -288,10 +306,14 @@ public class AiImportTaskServiceImpl implements AiImportTaskService {
         return Math.min(periodDays, MAX_STATS_PERIOD_DAYS);
     }
 
-    private void markParsed(String taskId, String message, List<QuestionPreviewVO> questions) {
+    private void markParsed(
+            String taskId,
+            String message,
+            List<QuestionPreviewVO> questions,
+            AiImportTaskPipelineMetricsVO metrics) {
         findByTaskId(taskId).ifPresent(task -> {
             String previewJson = toPreviewJson(taskId, questions);
-            updateStatusIfAllowed(task, AiImportTaskStatus.PARSED, message, questions.size(), previewJson);
+            updateStatusIfAllowed(task, AiImportTaskStatus.PARSED, message, questions.size(), previewJson, metrics);
         });
     }
 
@@ -300,17 +322,18 @@ public class AiImportTaskServiceImpl implements AiImportTaskService {
             AiImportTaskStatus target,
             String message,
             Integer questionCount,
-            String previewJson) {
+            String previewJson,
+            AiImportTaskPipelineMetricsVO metrics) {
         AiImportTaskStatus current = AiImportTaskStatus.valueOf(task.getStatus());
         if (current == target) {
-            refreshSameStatus(task, target, message, questionCount, previewJson);
+            refreshSameStatus(task, target, message, questionCount, previewJson, metrics);
             return;
         }
         if (current.isTerminal() || !current.canTransitionTo(target)) {
             log.info("[AiImportTask] 拒绝状态流转 taskId={} {} -> {}", task.getTaskId(), current, target);
             return;
         }
-        refreshSameStatus(task, target, message, questionCount, previewJson);
+        refreshSameStatus(task, target, message, questionCount, previewJson, metrics);
     }
 
     private void refreshSameStatus(
@@ -318,7 +341,8 @@ public class AiImportTaskServiceImpl implements AiImportTaskService {
             AiImportTaskStatus target,
             String message,
             Integer questionCount,
-            String previewJson) {
+            String previewJson,
+            AiImportTaskPipelineMetricsVO metrics) {
         LocalDateTime now = LocalDateTime.now();
         AiImportTask update = new AiImportTask();
         update.setId(task.getId());
@@ -329,6 +353,7 @@ public class AiImportTaskServiceImpl implements AiImportTaskService {
         if (previewJson != null) {
             update.setPreviewJson(previewJson);
         }
+        applyPipelineMetrics(update, task, metrics);
         if (target == AiImportTaskStatus.PARSED && task.getParsedAt() == null) {
             update.setParsedAt(now);
         } else if (target == AiImportTaskStatus.IMPORTED && task.getImportedAt() == null) {
@@ -341,6 +366,28 @@ public class AiImportTaskServiceImpl implements AiImportTaskService {
             aiImportTaskMapper.update(null, new LambdaUpdateWrapper<AiImportTask>()
                     .eq(AiImportTask::getId, task.getId())
                     .set(AiImportTask::getPreviewJson, null));
+        }
+    }
+
+    private static void applyPipelineMetrics(
+            AiImportTask update,
+            AiImportTask task,
+            AiImportTaskPipelineMetricsVO metrics) {
+        if (metrics == null || task.getPipelineDurationMs() != null) {
+            return;
+        }
+        if (metrics.getMineruMs() != null) {
+            update.setMineruDurationMs(metrics.getMineruMs());
+        }
+        if (metrics.getLlmMs() != null) {
+            update.setLlmDurationMs(metrics.getLlmMs());
+        }
+        if (metrics.getPipelineMs() != null) {
+            update.setPipelineDurationMs(metrics.getPipelineMs());
+        } else if (metrics.getMineruMs() != null || metrics.getLlmMs() != null) {
+            int mineru = metrics.getMineruMs() == null ? 0 : metrics.getMineruMs();
+            int llm = metrics.getLlmMs() == null ? 0 : metrics.getLlmMs();
+            update.setPipelineDurationMs(mineru + llm);
         }
     }
 

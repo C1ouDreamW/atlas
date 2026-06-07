@@ -45,4 +45,7 @@ public class AiImportTaskStatusVO {
                     """),
             schema = @Schema(implementation = QuestionPreviewVO.class))
     private List<QuestionPreviewVO> questions;
+
+    @Schema(description = "Worker 实测流水线耗时；PARSED/FAILED 同步时写入 MySQL，对外轮询一般不返回")
+    private AiImportTaskPipelineMetricsVO metrics;
 }

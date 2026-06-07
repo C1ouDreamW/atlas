@@ -12,7 +12,11 @@ public class AiImportTaskOverallStatsRow {
 
     private Long totalCount;
 
-    private Double avgParseSec;
+    private Double avgPipelineSec;
+
+    private Double avgMineruSec;
+
+    private Double avgLlmSec;
 
     private Double avgQuestionCount;
 
