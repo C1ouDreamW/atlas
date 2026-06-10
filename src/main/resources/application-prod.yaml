@@ -20,6 +20,19 @@ spring:
       repositories:
         enabled: false
 
+stream-task:
+  enabled: true
+  stream-key: ishua:task:stream
+  group: ishua-ai-workers
+  consumer:
+    enabled: false
+  recovery:
+    enabled: false
+  idempotent:
+    enabled: false
+  admin:
+    enabled: false
+
 server:
   port: 8080
 

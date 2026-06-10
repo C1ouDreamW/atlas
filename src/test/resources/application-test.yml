@@ -22,6 +22,19 @@ spring:
     scheduling:
       enabled: false
 
+stream-task:
+  enabled: true
+  stream-key: ishua:task:stream
+  group: ishua-ai-workers
+  consumer:
+    enabled: false
+  recovery:
+    enabled: false
+  idempotent:
+    enabled: false
+  admin:
+    enabled: false
+
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true

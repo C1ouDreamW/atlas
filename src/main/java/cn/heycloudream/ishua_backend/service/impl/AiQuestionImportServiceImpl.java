@@ -7,12 +7,12 @@ import cn.heycloudream.ishua_backend.service.AiImportTaskService;
 import cn.heycloudream.ishua_backend.service.AiQuestionImportService;
 import cn.heycloudream.ishua_backend.service.ai.AiImportTaskMetaStore;
 import cn.heycloudream.ishua_backend.service.ai.AiImportTaskStatusStore;
-import cn.heycloudream.ishua_backend.service.ai.RedisStreamTaskDispatcher;
 import cn.heycloudream.ishua_backend.service.file.FileStorageService;
 import cn.heycloudream.ishua_backend.service.guard.BankAccessGuard;
 import cn.heycloudream.ishua_backend.util.TaskIdGenerator;
 import cn.heycloudream.ishua_backend.vo.ai.AiImportSubmitVO;
 import cn.heycloudream.ishua_backend.vo.ai.AiImportTaskMetaVO;
+import cn.heycloudream.streamtask.api.StreamTaskTemplate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,7 +39,7 @@ public class AiQuestionImportServiceImpl implements AiQuestionImportService {
     private static final Set<String> ALLOWED_IMPORT_EXTENSIONS = Set.of("txt", "pdf", "docx");
 
     private final FileStorageService fileStorageService;
-    private final RedisStreamTaskDispatcher taskDispatcher;
+    private final StreamTaskTemplate streamTaskTemplate;
     private final AiImportTaskStatusStore taskStatusStore;
     private final AiImportTaskMetaStore taskMetaStore;
     private final AiImportTaskService aiImportTaskService;
@@ -87,7 +87,7 @@ public class AiQuestionImportServiceImpl implements AiQuestionImportService {
 
         aiImportTaskService.createOnSubmit(meta);
         taskMetaStore.write(taskId, meta);
-        taskDispatcher.dispatch(meta);
+        streamTaskTemplate.publish("ai.import.file", taskId, meta);
         taskStatusStore.write(taskId, AiImportTaskStatus.SUBMITTED, null, null);
 
         log.info("[submitFileImport] 任务已提交 taskId={} bankId={} file={}", taskId, bankId, originalFilename);
