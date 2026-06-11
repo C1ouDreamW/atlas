@@ -6,7 +6,9 @@ import cn.heycloudream.ishua_backend.config.openapi.ApiDocPublicEndpoint;
 import cn.heycloudream.ishua_backend.config.openapi.ApiDocStandardResponses;
 import cn.heycloudream.ishua_backend.dto.user.UserLoginDTO;
 import cn.heycloudream.ishua_backend.dto.user.UserRegisterDTO;
+import cn.heycloudream.ishua_backend.dto.user.UserRegisterEmailCodeDTO;
 import cn.heycloudream.ishua_backend.service.UserService;
+import cn.heycloudream.ishua_backend.service.email.RegisterEmailVerificationService;
 import cn.heycloudream.ishua_backend.util.UserContextHolder;
 import cn.heycloudream.ishua_backend.vo.user.UserLoginVO;
 import cn.heycloudream.ishua_backend.vo.user.UserMeVO;
@@ -23,12 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 用户鉴权 REST 接口：注册与登录。
- * <p>
- * 路径在白名单中，不经过 JWT 拦截器。
- * </p>
- *
- * @author C1ouD
+ * User auth endpoints.
  */
 @RestController
 @RequestMapping("/api/v1/users")
@@ -39,16 +36,25 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
 
     private final UserService userService;
+    private final RegisterEmailVerificationService registerEmailVerificationService;
+
+    @PostMapping("/register/email-code")
+    @ApiDocPublicEndpoint
+    @Operation(
+            summary = "发送注册邮箱验证码",
+            description = "无需登录。向指定邮箱发送 6 位验证码，用于后续注册。"
+    )
+    public Result<Void> sendRegisterEmailCode(@Valid @RequestBody UserRegisterEmailCodeDTO dto) {
+        registerEmailVerificationService.sendCode(dto.getEmail());
+        return Result.success(null);
+    }
 
     @PostMapping("/register")
     @ApiDocPublicEndpoint
     @Operation(
             summary = "用户注册",
-            description = """
-                    **无需登录。** 使用 BCrypt 加密存储密码；服务端固定角色为 `USER`，忽略请求体中的 `role` 字段。
-                    成功：code=200，data 为 null。
-                    失败：code=409 用户名已存在（含已逻辑删除账号）。
-                    """)
+            description = "无需登录。先校验邮箱验证码，通过后再创建用户。"
+    )
     public Result<Void> register(@Valid @RequestBody UserRegisterDTO dto) {
         userService.register(dto);
         return Result.success(null);
@@ -58,11 +64,8 @@ public class UserController {
     @ApiDocPublicEndpoint
     @Operation(
             summary = "用户登录",
-            description = """
-                    **无需登录。** 校验账号密码，成功返回 JWT 与用户信息（含 `role`：`USER` / `PREMIUM` / `ADMIN`）。
-                    失败：code=401 账号或密码错误。
-                    后续请求 Header：`Authorization: Bearer <token>`。
-                    """)
+            description = "无需登录。校验账号密码，成功返回 JWT 与用户信息。"
+    )
     public Result<UserLoginVO> login(@Valid @RequestBody UserLoginDTO dto) {
         return Result.success(userService.login(dto));
     }
@@ -71,10 +74,8 @@ public class UserController {
     @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
     @Operation(
             summary = "获取当前登录用户信息",
-            description = """
-                    须 JWT，最低角色 USER。返回 userId、username、nickname、role，供前端按角色渲染菜单。
-                    失败：code=401 未登录或 Token 无效。
-                    """)
+            description = "须 JWT，最低角色 USER。"
+    )
     public Result<UserMeVO> me() {
         return Result.success(userService.getCurrentUser(UserContextHolder.get()));
     }

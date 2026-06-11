@@ -5,6 +5,7 @@ import cn.heycloudream.ishua_backend.dto.user.UserRegisterDTO;
 import cn.heycloudream.ishua_backend.entity.SysUser;
 import cn.heycloudream.ishua_backend.exception.BusinessException;
 import cn.heycloudream.ishua_backend.mapper.SysUserMapper;
+import cn.heycloudream.ishua_backend.service.email.RegisterEmailVerificationService;
 import cn.heycloudream.ishua_backend.service.impl.UserServiceImpl;
 import cn.heycloudream.ishua_backend.util.JwtUtils;
 import cn.heycloudream.ishua_backend.vo.user.UserLoginVO;
@@ -21,6 +22,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -40,15 +43,16 @@ class UserServiceImplTest {
     @Mock
     private JwtUtils jwtUtils;
 
+    @Mock
+    private RegisterEmailVerificationService registerEmailVerificationService;
+
     @InjectMocks
     private UserServiceImpl userService;
 
     @Test
     @DisplayName("register: 用户名已存在 → 409")
     void register_duplicateUsername_shouldThrow409() {
-        UserRegisterDTO dto = new UserRegisterDTO();
-        dto.setUsername("dup");
-        dto.setPassword("123456");
+        UserRegisterDTO dto = buildRegisterDto();
 
         when(sysUserMapper.selectCount(any(Wrapper.class))).thenReturn(1L);
 
@@ -57,25 +61,62 @@ class UserServiceImplTest {
                 .extracting("code")
                 .isEqualTo(409);
         verify(sysUserMapper, never()).insert(any(SysUser.class));
+        verify(registerEmailVerificationService, never()).verifyCode(any(), any());
     }
 
     @Test
-    @DisplayName("register: 成功 → BCrypt 加密后入库")
-    void register_success_shouldEncodePassword() {
-        UserRegisterDTO dto = new UserRegisterDTO();
-        dto.setUsername("newbie");
-        dto.setPassword("secret12");
-        dto.setNickname("新手");
+    @DisplayName("register: 邮箱已存在 → 409")
+    void register_duplicateEmail_shouldThrow409() {
+        UserRegisterDTO dto = buildRegisterDto();
+
+        when(sysUserMapper.selectCount(any(Wrapper.class))).thenReturn(0L, 1L);
+        when(registerEmailVerificationService.normalizeEmail(dto.getEmail())).thenReturn("newbie@example.com");
+
+        assertThatThrownBy(() -> userService.register(dto))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code")
+                .isEqualTo(409);
+        verify(sysUserMapper, never()).insert(any(SysUser.class));
+        verify(registerEmailVerificationService, never()).verifyCode(any(), any());
+    }
+
+    @Test
+    @DisplayName("register: 验证码错误 → 400")
+    void register_invalidCode_shouldThrow400() {
+        UserRegisterDTO dto = buildRegisterDto();
 
         when(sysUserMapper.selectCount(any(Wrapper.class))).thenReturn(0L);
+        when(registerEmailVerificationService.normalizeEmail(dto.getEmail())).thenReturn("newbie@example.com");
+        doThrow(new BusinessException(400, "验证码错误"))
+                .when(registerEmailVerificationService)
+                .verifyCode("newbie@example.com", dto.getCode());
+
+        assertThatThrownBy(() -> userService.register(dto))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code")
+                .isEqualTo(400);
+        verify(sysUserMapper, never()).insert(any(SysUser.class));
+    }
+
+    @Test
+    @DisplayName("register: 成功 → BCrypt 加密后入库并记录邮箱验证时间")
+    void register_success_shouldEncodePassword() {
+        UserRegisterDTO dto = buildRegisterDto();
+
+        when(sysUserMapper.selectCount(any(Wrapper.class))).thenReturn(0L);
+        when(registerEmailVerificationService.normalizeEmail(dto.getEmail())).thenReturn("newbie@example.com");
         when(passwordEncoder.encode("secret12")).thenReturn("$2a$encoded");
 
         userService.register(dto);
+
+        verify(registerEmailVerificationService).verifyCode("newbie@example.com", dto.getCode());
 
         ArgumentCaptor<SysUser> captor = ArgumentCaptor.forClass(SysUser.class);
         verify(sysUserMapper).insert(captor.capture());
         assertThat(captor.getValue().getPasswordHash()).isEqualTo("$2a$encoded");
         assertThat(captor.getValue().getUsername()).isEqualTo("newbie");
+        assertThat(captor.getValue().getEmail()).isEqualTo("newbie@example.com");
+        assertThat(captor.getValue().getEmailVerifiedAt()).isNotNull();
     }
 
     @Test
@@ -138,5 +179,15 @@ class UserServiceImplTest {
         assertThat(vo.getToken()).isEqualTo("jwt-token");
         assertThat(vo.getUserId()).isEqualTo(2L);
         assertThat(vo.getRole()).isEqualTo("PREMIUM");
+    }
+
+    private static UserRegisterDTO buildRegisterDto() {
+        UserRegisterDTO dto = new UserRegisterDTO();
+        dto.setUsername("newbie");
+        dto.setPassword("secret12");
+        dto.setEmail("newbie@example.com");
+        dto.setCode("123456");
+        dto.setNickname("新手");
+        return dto;
     }
 }

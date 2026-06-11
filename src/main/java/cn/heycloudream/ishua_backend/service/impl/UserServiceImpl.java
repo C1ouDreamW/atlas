@@ -10,6 +10,7 @@ import cn.heycloudream.ishua_backend.enums.UserRole;
 import cn.heycloudream.ishua_backend.exception.BusinessException;
 import cn.heycloudream.ishua_backend.mapper.SysUserMapper;
 import cn.heycloudream.ishua_backend.service.UserService;
+import cn.heycloudream.ishua_backend.service.email.RegisterEmailVerificationService;
 import cn.heycloudream.ishua_backend.util.JwtUtils;
 import cn.heycloudream.ishua_backend.vo.admin.AdminUserVO;
 import cn.heycloudream.ishua_backend.vo.user.UserLoginVO;
@@ -26,11 +27,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * 用户鉴权服务实现。
- *
- * @author C1ouD
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -39,27 +35,42 @@ public class UserServiceImpl implements UserService {
     private final SysUserMapper sysUserMapper;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
+    private final RegisterEmailVerificationService registerEmailVerificationService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void register(UserRegisterDTO dto) {
-        // 校验用户名是否已存在（MyBatis-Plus @TableLogic 自动过滤 is_deleted=1）
-        Long count = sysUserMapper.selectCount(
+        Long usernameCount = sysUserMapper.selectCount(
                 new LambdaQueryWrapper<SysUser>()
                         .eq(SysUser::getUsername, dto.getUsername())
         );
-        if (count > 0) {
+        if (usernameCount > 0) {
             log.warn("注册失败：用户名已存在 username={}", dto.getUsername());
             throw new BusinessException(409, "用户名已存在");
         }
 
+        String normalizedEmail = registerEmailVerificationService.normalizeEmail(dto.getEmail());
+        Long emailCount = sysUserMapper.selectCount(
+                new LambdaQueryWrapper<SysUser>()
+                        .eq(SysUser::getEmail, normalizedEmail)
+        );
+        if (emailCount > 0) {
+            log.warn("注册失败：邮箱已存在 email={}", normalizedEmail);
+            throw new BusinessException(409, "邮箱已存在");
+        }
+
+        registerEmailVerificationService.verifyCode(normalizedEmail, dto.getCode());
+
+        LocalDateTime now = LocalDateTime.now();
         SysUser user = SysUser.builder()
                 .username(dto.getUsername())
                 .passwordHash(passwordEncoder.encode(dto.getPassword()))
+                .email(normalizedEmail)
                 .nickname(dto.getNickname())
                 .role(UserRole.USER.name())
-                .createTime(LocalDateTime.now())
-                .updateTime(LocalDateTime.now())
+                .emailVerifiedAt(now)
+                .createTime(now)
+                .updateTime(now)
                 .build();
 
         sysUserMapper.insert(user);
@@ -68,7 +79,6 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserLoginVO login(UserLoginDTO dto) {
-        // 按用户名查询（@TableLogic 自动过滤已删除账号）
         SysUser user = sysUserMapper.selectOne(
                 new LambdaQueryWrapper<SysUser>()
                         .eq(SysUser::getUsername, dto.getUsername())

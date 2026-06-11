@@ -23,6 +23,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addPathPatterns("/api/**")
                 .excludePathPatterns(
                         // 用户注册与登录
+                        "/api/v1/users/register/email-code",
                         "/api/v1/users/register",
                         "/api/v1/users/login",
                         // 题库大厅（公开题库分页列表，无需登录）
@@ -39,6 +40,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addPathPatterns("/api/**")
                 .excludePathPatterns(
                         // 用户注册与登录
+                        "/api/v1/users/register/email-code",
                         "/api/v1/users/register",
                         "/api/v1/users/login",
                         // 题库大厅（公开题库分页列表，无需登录）

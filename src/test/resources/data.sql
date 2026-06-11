@@ -1,8 +1,8 @@
 -- 精简种子数据：与 sql/data/seed_test_data.sql 中压测靶心账号/题库 ID 对齐
 
-INSERT INTO sys_user (id, username, password_hash, nickname, role, create_time, update_time, is_deleted)
-VALUES (1, 'testuser', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '测试同学', 'PREMIUM',
-        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0);
+INSERT INTO sys_user (id, username, password_hash, email, nickname, role, email_verified_at, create_time, update_time, is_deleted)
+VALUES (1, 'testuser', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', 'testuser@example.com', '测试同学', 'PREMIUM',
+        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0);
 
 INSERT INTO question_bank (id, user_id, title, description, is_public, create_time, update_time, is_deleted)
 VALUES (1, 1, 'H2 测试公开题库', '轨道 A 集成测试用公开题库', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0);

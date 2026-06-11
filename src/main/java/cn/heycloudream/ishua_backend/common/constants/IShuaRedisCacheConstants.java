@@ -99,4 +99,26 @@ public final class IShuaRedisCacheConstants {
     public static String taskImportLockKey(String taskId) {
         return TASK_IMPORT_LOCK_PREFIX + taskId;
     }
+
+    // ==================== 注册邮箱验证码 Key ====================
+
+    private static final String REGISTER_EMAIL_CODE_PREFIX = "ishua:register:email_code:";
+    private static final String REGISTER_EMAIL_CODE_COOLDOWN_PREFIX = "ishua:register:email_code:cooldown:";
+    private static final String REGISTER_EMAIL_CODE_ATTEMPTS_PREFIX = "ishua:register:email_code:attempts:";
+
+    public static final int REGISTER_EMAIL_CODE_TTL_SECONDS = 10 * 60;
+    public static final int REGISTER_EMAIL_CODE_RESEND_COOLDOWN_SECONDS = 60;
+    public static final int REGISTER_EMAIL_CODE_MAX_ATTEMPTS = 5;
+
+    public static String registerEmailCodeKey(String normalizedEmail) {
+        return REGISTER_EMAIL_CODE_PREFIX + normalizedEmail;
+    }
+
+    public static String registerEmailCodeCooldownKey(String normalizedEmail) {
+        return REGISTER_EMAIL_CODE_COOLDOWN_PREFIX + normalizedEmail;
+    }
+
+    public static String registerEmailCodeAttemptsKey(String normalizedEmail) {
+        return REGISTER_EMAIL_CODE_ATTEMPTS_PREFIX + normalizedEmail;
+    }
 }

@@ -1,21 +1,22 @@
--- H2 (MODE=MySQL) 测试库表结构，与 sql/schema/init_core_tables.sql 核心表对齐
-
 DROP TABLE IF EXISTS wrong_question;
 DROP TABLE IF EXISTS question;
 DROP TABLE IF EXISTS question_bank;
 DROP TABLE IF EXISTS sys_user;
 
 CREATE TABLE sys_user (
-    id            BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    username      VARCHAR(64)  NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    nickname      VARCHAR(64),
-    role          VARCHAR(32)  NOT NULL DEFAULT 'USER',
-    create_time   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    update_time   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    is_deleted    TINYINT      NOT NULL DEFAULT 0
+    id                BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    username          VARCHAR(64)  NOT NULL,
+    password_hash     VARCHAR(255) NOT NULL,
+    email             VARCHAR(254) NOT NULL,
+    nickname          VARCHAR(64),
+    role              VARCHAR(32)  NOT NULL DEFAULT 'USER',
+    email_verified_at TIMESTAMP    NULL,
+    create_time       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    is_deleted        TINYINT      NOT NULL DEFAULT 0
 );
 CREATE UNIQUE INDEX uk_username ON sys_user (username, is_deleted);
+CREATE UNIQUE INDEX uk_email ON sys_user (email, is_deleted);
 CREATE INDEX idx_create_time ON sys_user (create_time);
 
 CREATE TABLE question_bank (

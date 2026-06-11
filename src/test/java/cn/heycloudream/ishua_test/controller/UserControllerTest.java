@@ -4,9 +4,11 @@ import cn.heycloudream.ishua_backend.controller.UserController;
 import cn.heycloudream.ishua_test.IShuaTestApplication;
 import cn.heycloudream.ishua_backend.dto.user.UserLoginDTO;
 import cn.heycloudream.ishua_backend.dto.user.UserRegisterDTO;
+import cn.heycloudream.ishua_backend.dto.user.UserRegisterEmailCodeDTO;
 import cn.heycloudream.ishua_backend.exception.BusinessException;
 import cn.heycloudream.ishua_backend.mapper.SysUserMapper;
 import cn.heycloudream.ishua_backend.service.UserService;
+import cn.heycloudream.ishua_backend.service.email.RegisterEmailVerificationService;
 import cn.heycloudream.ishua_backend.support.AtlasWebMvcTestConfig;
 import cn.heycloudream.ishua_backend.support.MockMvcTestSupport;
 import cn.heycloudream.ishua_backend.support.WebMvcAuthTestSupport;
@@ -54,6 +56,54 @@ class UserControllerTest {
     @MockBean
     private SysUserMapper sysUserMapper;
 
+    @MockBean
+    private RegisterEmailVerificationService registerEmailVerificationService;
+
+    @Test
+    @DisplayName("POST /register/email-code: 参数校验失败 → code=400")
+    void sendRegisterEmailCode_validationFail_shouldReturn400() throws Exception {
+        UserRegisterEmailCodeDTO dto = new UserRegisterEmailCodeDTO();
+        dto.setEmail("invalid-email");
+
+        mockMvc.perform(post("/api/v1/users/register/email-code")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400));
+    }
+
+    @Test
+    @DisplayName("POST /register/email-code: 成功 → code=200")
+    void sendRegisterEmailCode_success_shouldReturn200() throws Exception {
+        UserRegisterEmailCodeDTO dto = new UserRegisterEmailCodeDTO();
+        dto.setEmail("user@example.com");
+
+        mockMvc.perform(post("/api/v1/users/register/email-code")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        verify(registerEmailVerificationService).sendCode("user@example.com");
+    }
+
+    @Test
+    @DisplayName("POST /register/email-code: 频控 → code=429")
+    void sendRegisterEmailCode_rateLimited_shouldReturn429() throws Exception {
+        UserRegisterEmailCodeDTO dto = new UserRegisterEmailCodeDTO();
+        dto.setEmail("user@example.com");
+
+        doThrow(new BusinessException(429, "验证码发送过于频繁，请稍后再试"))
+                .when(registerEmailVerificationService)
+                .sendCode("user@example.com");
+
+        mockMvc.perform(post("/api/v1/users/register/email-code")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(429));
+    }
+
     @Test
     @DisplayName("POST /register: 参数校验失败 → code=400")
     void register_validationFail_shouldReturn400() throws Exception {
@@ -71,9 +121,7 @@ class UserControllerTest {
     @Test
     @DisplayName("POST /register: 成功 → code=200")
     void register_success_shouldReturn200() throws Exception {
-        UserRegisterDTO dto = new UserRegisterDTO();
-        dto.setUsername("newuser");
-        dto.setPassword("123456");
+        UserRegisterDTO dto = buildValidRegisterDto();
 
         mockMvc.perform(post("/api/v1/users/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -82,6 +130,20 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.code").value(200));
 
         verify(userService).register(any(UserRegisterDTO.class));
+    }
+
+    @Test
+    @DisplayName("POST /register: 验证码错误 → code=400")
+    void register_invalidCode_shouldReturn400() throws Exception {
+        UserRegisterDTO dto = buildValidRegisterDto();
+
+        doThrow(new BusinessException(400, "验证码错误")).when(userService).register(any());
+
+        mockMvc.perform(post("/api/v1/users/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400));
     }
 
     @Test
@@ -144,5 +206,14 @@ class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.userId").value(1));
+    }
+
+    private static UserRegisterDTO buildValidRegisterDto() {
+        UserRegisterDTO dto = new UserRegisterDTO();
+        dto.setUsername("newuser");
+        dto.setPassword("123456");
+        dto.setEmail("newuser@example.com");
+        dto.setCode("123456");
+        return dto;
     }
 }
